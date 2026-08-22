@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sira.ci/schemas/abidjan-stops.schema.json",
+  "title": "Jeu de donnees d'arrets SIRA",
+  "description": "Points de livraison de test pour le pilote Abidjan (roadmap Phase 0.5). Doit rester aligne sur stopsDatasetSchema dans packages/shared/src/schemas.ts.",
+  "type": "object",
+  "required": ["version", "generatedAt", "city", "country", "crs", "depots", "stops"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "city": { "type": "string", "minLength": 1 },
+    "country": { "type": "string", "minLength": 2, "maxLength": 2 },
+    "crs": { "const": "EPSG:4326" },
+    "notes": { "type": "string" },
+    "depots": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/depot" }
+    },
+    "stops": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/stop" }
+    }
+  },
+  "$defs": {
+    "latitude": {
+      "type": "number",
+      "minimum": 4.1,
+      "maximum": 10.8,
+      "description": "Latitude WGS 84, bornee a la Cote d'Ivoire"
+    },
+    "longitude": {
+      "type": "number",
+      "minimum": -8.7,
+      "maximum": -2.4,
+      "description": "Longitude WGS 84, bornee a la Cote d'Ivoire"
+    },
+    "timeOfDay": {
+      "type": "string",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "timeWindow": {
+      "type": "object",
+      "required": ["start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "$ref": "#/$defs/timeOfDay" },
+        "end": { "$ref": "#/$defs/timeOfDay" }
+      }
+    },
+    "depot": {
+      "type": "object",
+      "required": ["id", "label", "commune", "lat", "lon", "addressText", "openFrom", "openUntil"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^DEP-[0-9]{2}$" },
+        "label": { "type": "string", "minLength": 1 },
+        "commune": { "type": "string", "minLength": 1 },
+        "lat": { "$ref": "#/$defs/latitude" },
+        "lon": { "$ref": "#/$defs/longitude" },
+        "addressText": { "type": "string", "minLength": 1 },
+        "openFrom": { "$ref": "#/$defs/timeOfDay" },
+        "openUntil": { "$ref": "#/$defs/timeOfDay" }
+      }
+    },
+    "stop": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "commune",
+        "lat",
+        "lon",
+        "addressText",
+        "informalDescription",
+        "timeWindow",
+        "loadKg",
+        "volumeL",
+        "serviceMinutes",
+        "priority"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^STP-[0-9]{3}$" },
+        "label": { "type": "string", "minLength": 1 },
+        "commune": {
+          "type": "string",
+          "enum": ["Plateau", "Cocody", "Marcory", "Treichville", "Yopougon"]
+        },
+        "lat": { "$ref": "#/$defs/latitude" },
+        "lon": { "$ref": "#/$defs/longitude" },
+        "addressText": { "type": "string", "minLength": 1 },
+        "informalDescription": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Adressage reel du terrain : reperes, couleur de portail, commercant voisin"
+        },
+        "landmark": { "type": "string", "minLength": 1 },
+        "contactPhone": { "type": "string", "pattern": "^\\+225[0-9]{10}$" },
+        "timeWindow": {
+          "oneOf": [{ "$ref": "#/$defs/timeWindow" }, { "type": "null" }]
+        },
+        "loadKg": { "type": "number", "minimum": 0, "maximum": 2000 },
+        "volumeL": { "type": "number", "minimum": 0, "maximum": 20000 },
+        "serviceMinutes": { "type": "integer", "minimum": 0, "maximum": 120 },
+        "priority": { "enum": ["normal", "high"] }
+      }
+    }
+  }
+}

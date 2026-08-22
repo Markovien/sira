@@ -1,0 +1,88 @@
+# SIRA
+
+Optimisation de tournées de livraison urbaine en Côte d'Ivoire.
+*Sira* signifie « chemin » en dioula.
+
+SIRA calcule le meilleur ordre de passage et le meilleur itinéraire pour les
+livreurs urbains — TSP pour un livreur seul, VRP pour une flotte — et réajuste
+la planification selon le trafic. Elle tourne sur des Android d'entrée de
+gamme, fonctionne hors-ligne, et n'utilise aucune API cartographique payante.
+
+- **Cadrage produit** → [`01-CADRAGE-PROJET.md`](01-CADRAGE-PROJET.md)
+- **Feuille de route** → [`02-ROADMAP-DEV.md`](02-ROADMAP-DEV.md)
+- **Contexte pour Claude Code** → [`CLAUDE.md`](CLAUDE.md)
+
+## État
+
+**Phase 0 — Fondations : terminée.** Le monorepo, la chaîne qualité, la CI,
+l'environnement Docker et le jeu de données Abidjan sont en place. La Phase 1
+(backend NestJS) peut démarrer une fois l'environnement local vérifié.
+
+## Mise en route
+
+### Prérequis
+
+| Outil | Version | Vérifier |
+|---|---|---|
+| Node.js | 22 LTS | `node -v` |
+| pnpm | 9+ | `pnpm -v` — sinon `corepack enable pnpm` |
+| Docker Desktop | récent | `docker --version` |
+| Python | 3.12+ | `python --version` — pour le générateur de données et le solveur VRP |
+
+### Installation
+
+```bash
+pnpm install
+cp .env.example .env
+```
+
+### Environnement local
+
+```bash
+bash infra/osrm/prepare.sh      # extrait OSM Côte d'Ivoire + pipeline MLD (~15 min)
+bash infra/photon/prepare.sh    # géocodeur Photon + index Côte d'Ivoire (~5 min)
+pnpm infra:up
+pnpm infra:smoke
+```
+
+`pnpm infra:smoke` valide les critères d'acceptation de la Phase 0 : PostGIS
+répond, OSRM renvoie une route et une matrice de durées entre deux points
+d'Abidjan, Photon géocode « Pharmacie Saint Jean Cocody ».
+
+### Vérifications
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm format:check
+```
+
+## Structure
+
+| Dossier | Contenu | Phase |
+|---|---|---|
+| `apps/api` | Backend NestJS + Prisma + PostGIS | 1 |
+| `apps/mobile` | Application livreur Expo, offline-first | 3 |
+| `apps/web` | Dashboard flotte React + Vite | 4 |
+| `packages/shared` | Types, schémas Zod, helpers géographiques | 0 |
+| `packages/tsp-core` | Solveur TSP TypeScript pur, embarquable | 2 |
+| `services/vrp-solver` | FastAPI + OR-Tools | 2 |
+| `services/traffic` | Profils de vitesse et re-planification | 5 |
+| `infra` | docker-compose, préparation OSRM/Photon, smoke test | 0 |
+| `data` | Jeu de données Abidjan + générateur + JSON Schema | 0 |
+
+## Principes
+
+1. **Frugalité d'abord** — sobriété en données, batterie et coût serveur avant
+   l'élégance technique.
+2. **Aucune API payante** sans validation explicite : OSM, OSRM, Photon et
+   OR-Tools, tous auto-hébergés.
+3. **Hors-ligne par défaut** — l'application livreur fonctionne en mode avion
+   et se synchronise ensuite.
+4. **L'adressage informel est le sujet**, pas un cas particulier : repères,
+   descriptions et photos plutôt que noms de rue.
+
+## Licence
+
+Propriétaire — tous droits réservés. Dépôt privé.
