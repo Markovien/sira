@@ -1,0 +1,55 @@
+# Dependances
+node_modules/
+.pnpm-store/
+
+# Sorties de build et caches d'outillage
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+.eslintcache
+.vitest/
+
+# Secrets et configuration locale : seul .env.example est commite.
+.env
+.env.*
+!.env.example
+
+# Donnees volumineuses regenerables par infra/*/prepare.sh.
+# Elles pesent plusieurs Go et ne doivent jamais entrer dans l'historique.
+infra/osrm/data/
+infra/photon/photon.jar
+infra/photon/photon_data/
+infra/photon/*.tar.bz2
+data/osm/
+data/photon/
+*.osm.pbf
+*.osrm*
+
+# Mobile (Phase 3)
+.expo/
+*.apk
+*.aab
+*.keystore
+
+# Python (services/vrp-solver, services/traffic, generateur de donnees)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Editeurs et systemes de fichiers
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Journaux
+*.log
+npm-debug.log*
+pnpm-debug.log*
