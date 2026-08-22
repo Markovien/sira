@@ -20,9 +20,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "data:validate": "pnpm --filter @sira/shared exec vitest run test/dataset.test.ts",
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
-    "infra:down": "docker compose -f infra/docker-compose.yml down",
-    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "data:check": "bash data/check-generated.sh",
+    "infra:up": "bash infra/compose.sh up -d",
+    "infra:down": "bash infra/compose.sh down",
+    "infra:logs": "bash infra/compose.sh logs -f",
     "infra:smoke": "bash infra/smoke-test.sh",
     "prepare:osrm": "bash infra/osrm/prepare.sh",
     "prepare:photon": "bash infra/photon/prepare.sh"

@@ -38,7 +38,9 @@ command -v curl >/dev/null 2>&1 || { echo "curl est requis" >&2; exit 2; }
 # --- 1. PostgreSQL + PostGIS ------------------------------------------------
 step '1. PostgreSQL + PostGIS'
 if ! command -v docker >/dev/null 2>&1; then
-  ko 'docker introuvable'
+  ko 'docker introuvable (https://docs.docker.com/get-docker/)'
+elif ! docker info >/dev/null 2>&1; then
+  ko 'le demon Docker ne repond pas (Docker Desktop demarre ?)'
 else
   version="$(docker exec sira-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
     -tAc 'SELECT postgis_version();' 2>/dev/null)"
@@ -58,8 +60,8 @@ if [[ "${route}" == *'"code":"Ok"'* ]]; then
   duration="$(printf '%s' "${route}" | grep -o '"duration":[0-9.]*' | head -1 | cut -d: -f2)"
   ok "route trouvee — ${distance} m, ${duration} s"
   # Garde-fou : une route plausible fait 3 a 12 km ; au-dela, coordonnees inversees.
-  km="${distance%%.*}"
-  if [[ -n "${km}" ]] && (( km > 2000 && km < 15000 )); then
+  meters="${distance%%.*}"
+  if [[ -n "${meters}" ]] && ((meters > 2000 && meters < 15000)); then
     ok 'distance plausible (coordonnees dans le bon ordre lon,lat)'
   else
     ko "distance suspecte (${distance} m) — verifier l'ordre lon,lat"
