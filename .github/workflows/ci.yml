@@ -1,0 +1,117 @@
+# CI SIRA — roadmap Phase 0.1 et critere d'acceptation « CI verte ».
+#
+# Trois travaux independants, du plus rapide au plus lent, pour que l'echec
+# arrive tot. Aucun service externe payant, aucun secret : la CI doit rester
+# executable par n'importe quel contributeur sur son fork.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# Une seule execution par branche : les pushes successifs annulent la
+# precedente plutot que d'empiler des minutes de runner.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  # Aucune telemetrie sortante depuis la CI.
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  # --- 1. Chaine qualite TypeScript -----------------------------------------
+  qualite:
+    name: Lint, types et tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Installer Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # --frozen-lockfile : un pnpm-lock.yaml non a jour doit faire echouer la
+      # CI, pas etre corrige silencieusement.
+      - name: Installer les dependances
+        run: pnpm install --frozen-lockfile
+
+      - name: Format (Prettier)
+        run: pnpm format:check
+
+      - name: Lint (ESLint)
+        run: pnpm lint
+
+      - name: Types (tsc --noEmit)
+        run: pnpm typecheck
+
+      - name: Tests (Vitest)
+        run: pnpm test
+
+  # --- 2. Jeu de donnees Abidjan --------------------------------------------
+  donnees:
+    name: Jeu de donnees Abidjan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # data/abidjan-stops.json est un artefact genere : il doit etre
+      # exactement la sortie du script, sinon les benchmarks de la Phase 2 ne
+      # seraient pas reproductibles.
+      - name: Le JSON commite est bien la sortie du generateur
+        run: bash data/check-generated.sh
+
+      - name: Valider contre le JSON Schema
+        run: |
+          python -m pip install --quiet check-jsonschema
+          check-jsonschema --schemafile data/abidjan-stops.schema.json \
+            data/abidjan-stops.json
+
+  # --- 3. Infrastructure locale ---------------------------------------------
+  infra:
+    name: Scripts et docker-compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck sur les scripts d infra et de donnees
+        run: |
+          sudo apt-get update --quiet
+          sudo apt-get install --yes --quiet shellcheck
+          shellcheck --severity=warning \
+            infra/compose.sh \
+            infra/smoke-test.sh \
+            infra/osrm/prepare.sh \
+            infra/photon/prepare.sh \
+            infra/check-env-example.sh \
+            data/check-generated.sh
+
+      # Ne demarre rien (les images OSRM/Photon exigent des donnees preparees
+      # de plusieurs Go) : verifie seulement que le fichier est valide et que
+      # toutes les variables interpolees ont un defaut.
+      - name: Valider docker-compose.yml
+        run: docker compose -f infra/docker-compose.yml config --quiet
+
+      - name: Le .env.example couvre toutes les variables du compose
+        run: bash infra/check-env-example.sh
