@@ -19,12 +19,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sira}
       POSTGRES_DB: ${POSTGRES_DB:-sira}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-sira} -d ${POSTGRES_DB:-sira}']
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sira} -d ${POSTGRES_DB:-sira}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -40,11 +40,11 @@ services:
       osrm-routed --algorithm mld --max-table-size 200
       /data/${OSM_EXTRACT_NAME:-ivory-coast-latest}.osrm
     ports:
-      - '${OSRM_PORT:-5000}:5000'
+      - "${OSRM_PORT:-5000}:5000"
     volumes:
       - ./osrm/data:/data:ro
     healthcheck:
-      test: ['CMD-SHELL', 'timeout 3 bash -c "</dev/tcp/localhost/5000" || exit 1']
+      test: ["CMD-SHELL", 'timeout 3 bash -c "</dev/tcp/localhost/5000" || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -64,11 +64,11 @@ services:
       -listen-port 2322
       -cors-any
     ports:
-      - '${PHOTON_PORT:-2322}:2322'
+      - "${PHOTON_PORT:-2322}:2322"
     volumes:
       - ./photon:/photon
     healthcheck:
-      test: ['CMD-SHELL', 'timeout 3 bash -c "</dev/tcp/localhost/2322" || exit 1']
+      test: ["CMD-SHELL", 'timeout 3 bash -c "</dev/tcp/localhost/2322" || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10

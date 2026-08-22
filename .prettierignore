@@ -1,0 +1,21 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+pnpm-lock.yaml
+
+# Genere par data/generate-abidjan-stops.py : le formatage vient du generateur,
+# Prettier ne doit pas le reecrire (la CI compare octet par octet).
+data/abidjan-stops.json
+
+# Donnees volumineuses regenerables.
+infra/osrm/data/
+infra/photon/photon_data/
+data/osm/
+data/photon/
+
+# Documents de cadrage fournis par le fondateur : ce sont des specifications,
+# pas du code du depot. Les reformater brouillerait leurs diffs.
+01-CADRAGE-PROJET.md
+02-ROADMAP-DEV.md

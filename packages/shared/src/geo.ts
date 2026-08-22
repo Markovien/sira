@@ -44,8 +44,7 @@ export function haversineMeters(a: Coordinates, b: Coordinates): number {
   const lat1 = toRadians(a.lat);
   const lat2 = toRadians(b.lat);
 
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
 
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }

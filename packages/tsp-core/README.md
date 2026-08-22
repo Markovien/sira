@@ -20,8 +20,8 @@ introduisant une dépendance ici doit être justifiée explicitement.
 
 ## Objectifs de performance (critères d'acceptation Phase 2)
 
-| Mesure | Cible |
-|---|---|
+| Mesure                                      | Cible |
+| ------------------------------------------- | ----- |
 | Écart à l'optimum connu (TSPLIB `berlin52`) | ≤ 8 % |
-| 50 arrêts sur Node | < 1 s |
-| 30 arrêts sur Android d'entrée de gamme | < 1 s |
+| 50 arrêts sur Node                          | < 1 s |
+| 30 arrêts sur Android d'entrée de gamme     | < 1 s |

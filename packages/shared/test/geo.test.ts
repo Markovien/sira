@@ -44,8 +44,6 @@ describe('isInside', () => {
 
 describe('toOsrmCoordinates', () => {
   it('serialise en lon,lat — l ordre attendu par OSRM', () => {
-    expect(toOsrmCoordinates([plateau, cocodySaintJean])).toBe(
-      '-4.0212,5.3251;-3.9958,5.3457',
-    );
+    expect(toOsrmCoordinates([plateau, cocodySaintJean])).toBe('-4.0212,5.3251;-3.9958,5.3457');
   });
 });

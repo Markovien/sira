@@ -1,0 +1,21 @@
+# Fin de ligne LF dans le depot pour tout le texte : les scripts de infra/
+# tournent dans des conteneurs Linux, et data/abidjan-stops.json est compare
+# octet par octet a la sortie du generateur Python (qui ecrit du LF).
+* text=auto eol=lf
+
+# Fichiers devant imperativement rester en LF, meme sous Windows.
+*.sh   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Binaires : aucune conversion.
+*.png  binary
+*.jpg  binary
+*.pbf  binary
+*.osrm* binary
+*.jar  binary
+
+# Le lockfile est genere : le masquer dans les diffs de revue.
+pnpm-lock.yaml linguist-generated=true -diff

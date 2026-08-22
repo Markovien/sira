@@ -6,14 +6,14 @@
 deux dépôts. C'est le jeu de référence utilisé par les tests, les benchmarks
 d'optimisation (Phase 2) et les démonstrations.
 
-| Commune | Arrêts |
-|---|---|
-| Cocody | 15 |
-| Marcory | 12 |
-| Yopougon | 12 |
-| Treichville | 11 |
-| Plateau | 10 |
-| **Total** | **60** |
+| Commune     | Arrêts |
+| ----------- | ------ |
+| Cocody      | 15     |
+| Marcory     | 12     |
+| Yopougon    | 12     |
+| Treichville | 11     |
+| Plateau     | 10     |
+| **Total**   | **60** |
 
 Caractéristiques du jeu : 20 arrêts portent une fenêtre horaire, 6 sont
 prioritaires, et la charge totale est de 467 kg. L'emprise va de 5,276 à
