@@ -18,13 +18,27 @@ Les deux scripts de préparation sont idempotents : relancés, ils détectent le
 fichiers déjà présents et ne retéléchargent rien (utiliser `--force` pour
 repartir de zéro).
 
+### Prérequis réseau
+
+La préparation télécharge des données depuis quatre domaines. Derrière un
+proxy d'entreprise ou un environnement d'exécution restreint, ils doivent être
+autorisés — sinon les scripts échouent en `403` sans que rien ne soit
+récupérable ailleurs :
+
+| Domaine                     | Contenu                       | Taille  |
+| --------------------------- | ----------------------------- | ------- |
+| `download.geofabrik.de`     | Extrait OSM Côte d'Ivoire     | ~80 Mo  |
+| `download1.graphhopper.com` | Index de géocodage Photon CI  | ~700 Mo |
+| `github.com`                | Jar officiel Photon           | ~70 Mo  |
+| `registry-1.docker.io`      | Images PostGIS, OSRM, Temurin | ~1,5 Go |
+
 ## Services
 
-| Service | Port | Rôle |
-|---|---|---|
+| Service         | Port | Rôle                                                                |
+| --------------- | ---- | ------------------------------------------------------------------- |
 | `sira-postgres` | 5432 | PostgreSQL 16 + PostGIS, `pg_trgm` et `unaccent` créés au démarrage |
-| `sira-osrm` | 5000 | Routage et matrices de durées sur l'extrait OSM Côte d'Ivoire |
-| `sira-photon` | 2322 | Géocodage sur l'index Côte d'Ivoire |
+| `sira-osrm`     | 5000 | Routage et matrices de durées sur l'extrait OSM Côte d'Ivoire       |
+| `sira-photon`   | 2322 | Géocodage sur l'index Côte d'Ivoire                                 |
 
 ### Pourquoi le pipeline MLD pour OSRM
 
@@ -59,13 +73,15 @@ des coordonnées inversées, l'erreur la plus fréquente avec OSRM, qui attend
 
 ## Dépannage
 
-| Symptôme | Cause probable |
-|---|---|
-| `osrm` redémarre en boucle | `infra/osrm/prepare.sh` n'a pas été exécuté, ou le nom de l'extrait diffère de `OSM_EXTRACT_NAME` |
-| Photon répond mais ne trouve rien | `photon_data/` absent ou index d'un autre pays |
-| Photon tué par l'OOM killer | Augmenter `-Xmx` dans `docker-compose.yml` (2 Go par défaut) |
-| `TableService` en erreur | Matrice plus grande que `--max-table-size` (200) |
-| Somme MD5 invalide au téléchargement | Miroir Geofabrik incomplet — relancer avec `--force` |
+| Symptôme                             | Cause probable                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `osrm` redémarre en boucle           | `infra/osrm/prepare.sh` n'a pas été exécuté, ou le nom de l'extrait diffère de `OSM_EXTRACT_NAME` |
+| Photon répond mais ne trouve rien    | `photon_data/` absent ou index d'un autre pays                                                    |
+| Photon tué par l'OOM killer          | Augmenter `-Xmx` dans `docker-compose.yml` (2 Go par défaut)                                      |
+| `TableService` en erreur             | Matrice plus grande que `--max-table-size` (200)                                                  |
+| Somme MD5 invalide au téléchargement | Miroir Geofabrik incomplet — relancer avec `--force`                                              |
+| `403` au téléchargement              | Domaine bloqué par un proxy sortant — voir « Prérequis réseau »                                   |
+| Smoke test : « démon Docker »        | Docker installé mais non démarré                                                                  |
 
 ## Production
 

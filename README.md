@@ -1,7 +1,7 @@
 # SIRA
 
 Optimisation de tournées de livraison urbaine en Côte d'Ivoire.
-*Sira* signifie « chemin » en dioula.
+_Sira_ signifie « chemin » en dioula.
 
 SIRA calcule le meilleur ordre de passage et le meilleur itinéraire pour les
 livreurs urbains — TSP pour un livreur seul, VRP pour une flotte — et réajuste
@@ -14,26 +14,33 @@ gamme, fonctionne hors-ligne, et n'utilise aucune API cartographique payante.
 
 ## État
 
-**Phase 0 — Fondations : terminée.** Le monorepo, la chaîne qualité, la CI,
-l'environnement Docker et le jeu de données Abidjan sont en place. La Phase 1
-(backend NestJS) peut démarrer une fois l'environnement local vérifié.
+**Phase 0 — Fondations : terminée, à une vérification près.** Le monorepo, la
+chaîne qualité, la CI GitHub Actions, l'environnement Docker et le jeu de
+données Abidjan sont en place, et `pnpm lint`, `typecheck`, `test`,
+`format:check` et `data:check` passent.
+
+Reste un point avant d'ouvrir la Phase 1 : le smoke test d'infrastructure
+(`pnpm infra:smoke`) n'a pas encore tourné en vert, faute d'un démon Docker et
+d'un accès aux serveurs de données OSM là où la Phase 0 a été exécutée. Les
+quatre commandes de la section « Environnement local » ci-dessous le mènent au
+bout.
 
 ## Mise en route
 
 ### Prérequis
 
-| Outil | Version | Vérifier |
-|---|---|---|
-| Node.js | 22 LTS | `node -v` |
-| pnpm | 9+ | `pnpm -v` — sinon `corepack enable pnpm` |
-| Docker Desktop | récent | `docker --version` |
-| Python | 3.12+ | `python --version` — pour le générateur de données et le solveur VRP |
+| Outil          | Version | Vérifier                                                             |
+| -------------- | ------- | -------------------------------------------------------------------- |
+| Node.js        | 22 LTS  | `node -v`                                                            |
+| pnpm           | 9+      | `pnpm -v` — sinon `corepack enable pnpm`                             |
+| Docker Desktop | récent  | `docker --version`                                                   |
+| Python         | 3.12+   | `python --version` — pour le générateur de données et le solveur VRP |
 
 ### Installation
 
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env   # facultatif : tout a un défaut, à copier pour surcharger
 ```
 
 ### Environnement local
@@ -52,25 +59,29 @@ d'Abidjan, Photon géocode « Pharmacie Saint Jean Cocody ».
 ### Vérifications
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm format:check
+pnpm format:check   # Prettier
+pnpm lint           # ESLint
+pnpm typecheck      # tsc --noEmit par paquet
+pnpm test           # Vitest
+pnpm data:check     # le JSON commité est bien la sortie du générateur
 ```
+
+Ce sont exactement les vérifications rejouées par la CI
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Structure
 
-| Dossier | Contenu | Phase |
-|---|---|---|
-| `apps/api` | Backend NestJS + Prisma + PostGIS | 1 |
-| `apps/mobile` | Application livreur Expo, offline-first | 3 |
-| `apps/web` | Dashboard flotte React + Vite | 4 |
-| `packages/shared` | Types, schémas Zod, helpers géographiques | 0 |
-| `packages/tsp-core` | Solveur TSP TypeScript pur, embarquable | 2 |
-| `services/vrp-solver` | FastAPI + OR-Tools | 2 |
-| `services/traffic` | Profils de vitesse et re-planification | 5 |
-| `infra` | docker-compose, préparation OSRM/Photon, smoke test | 0 |
-| `data` | Jeu de données Abidjan + générateur + JSON Schema | 0 |
+| Dossier               | Contenu                                             | Phase |
+| --------------------- | --------------------------------------------------- | ----- |
+| `apps/api`            | Backend NestJS + Prisma + PostGIS                   | 1     |
+| `apps/mobile`         | Application livreur Expo, offline-first             | 3     |
+| `apps/web`            | Dashboard flotte React + Vite                       | 4     |
+| `packages/shared`     | Types, schémas Zod, helpers géographiques           | 0     |
+| `packages/tsp-core`   | Solveur TSP TypeScript pur, embarquable             | 2     |
+| `services/vrp-solver` | FastAPI + OR-Tools                                  | 2     |
+| `services/traffic`    | Profils de vitesse et re-planification              | 5     |
+| `infra`               | docker-compose, préparation OSRM/Photon, smoke test | 0     |
+| `data`                | Jeu de données Abidjan + générateur + JSON Schema   | 0     |
 
 ## Principes
 

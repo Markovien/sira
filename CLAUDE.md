@@ -46,7 +46,12 @@ pnpm lint               # ESLint sur tout le dépôt
 pnpm typecheck          # tsc --noEmit par paquet
 pnpm format             # Prettier en écriture (format:check en lecture seule)
 pnpm data:validate      # valide data/abidjan-stops.json contre le schéma Zod
+pnpm data:check         # vérifie que le JSON est bien la sortie du générateur
 ```
+
+Ces six commandes sont exactement celles que rejoue la CI. Avant de pousser,
+`pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm data:check`
+donne le même verdict en local.
 
 ### Infrastructure locale
 
@@ -58,6 +63,13 @@ pnpm infra:smoke                # vérifie les critères d'acceptation de la Pha
 pnpm infra:logs                 # suit les logs des conteneurs
 pnpm infra:down                 # arrête tout
 ```
+
+`pnpm infra:*` passe par `infra/compose.sh`, qui ajoute `--env-file` sur le
+`.env` de la racine : Docker Compose ne cherche autrement le `.env` qu'à côté
+du `docker-compose.yml`, et les surcharges de la racine seraient ignorées en
+silence. Toutes les variables ont un défaut, donc la stack démarre sans `.env`
+— `infra/check-env-example.sh` (rejoué en CI) garantit que ça reste vrai et
+que `.env.example` reste exhaustif.
 
 ### Données de test
 
@@ -93,14 +105,17 @@ notion partagée entre deux applications y va, pas ailleurs.
 
 ### Choix d'architecture déjà arrêtés
 
-| Décision | Motif |
-|---|---|
-| OSRM en pipeline **MLD**, pas CH | Seul MLD permet de réinjecter les vitesses trafic (Phase 5) via un simple `osrm-customize`, sans retraiter l'extrait |
-| Photon lancé depuis le **jar officiel** sur `eclipse-temurin`, index pré-construit GraphHopper | Évite une image Docker communautaire non auditée et un import Nominatim de plusieurs heures |
-| Extrait Geofabrik nommé **`ivory-coast-latest.osm.pbf`** | C'est le slug réel de Geofabrik ; la roadmap mentionne `cote-divoire` par commodité |
-| Navigation **déléguée par deep link** à l'app GPS du téléphone | Zéro coût d'API de navigation, zéro guidage vocal à maintenir |
-| Coordonnées : toujours `{ lat, lon }` en interne | OSRM attend `lon,lat` — passer **obligatoirement** par `toOsrmCoordinate()` de `@sira/shared`, l'inversion est le bug classique |
-| `node-linker=hoisted` dans `.npmrc` | Expo et les bindings natifs supportent mal les liens symboliques de pnpm |
+| Décision                                                                                       | Motif                                                                                                                           |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| OSRM en pipeline **MLD**, pas CH                                                               | Seul MLD permet de réinjecter les vitesses trafic (Phase 5) via un simple `osrm-customize`, sans retraiter l'extrait            |
+| Photon lancé depuis le **jar officiel** sur `eclipse-temurin`, index pré-construit GraphHopper | Évite une image Docker communautaire non auditée et un import Nominatim de plusieurs heures                                     |
+| Extrait Geofabrik nommé **`ivory-coast-latest.osm.pbf`**                                       | C'est le slug réel de Geofabrik ; la roadmap mentionne `cote-divoire` par commodité                                             |
+| Navigation **déléguée par deep link** à l'app GPS du téléphone                                 | Zéro coût d'API de navigation, zéro guidage vocal à maintenir                                                                   |
+| Coordonnées : toujours `{ lat, lon }` en interne                                               | OSRM attend `lon,lat` — passer **obligatoirement** par `toOsrmCoordinate()` de `@sira/shared`, l'inversion est le bug classique |
+| `node-linker=hoisted` dans `.npmrc`                                                            | Expo et les bindings natifs supportent mal les liens symboliques de pnpm                                                        |
+| Fins de ligne **LF** imposées par `.gitattributes`                                             | `data/abidjan-stops.json` est comparé octet par octet à la sortie du générateur Python, qui écrit du LF                         |
+| `pnpm infra:*` passe par `infra/compose.sh`                                                    | Force `--env-file` sur le `.env` de la racine, que Docker Compose ignorerait sinon (il ne regarde qu'à côté du compose)         |
+| `data/abidjan-stops.json` **exclu de Prettier**                                                | C'est un artefact généré ; le reformater casserait la comparaison de `pnpm data:check`                                          |
 
 ## Conventions
 
@@ -112,7 +127,7 @@ notion partagée entre deux applications y va, pas ailleurs.
   `phase-1-backend-core`, etc.
 - **Langue** : code, identifiants et types en anglais ; commentaires,
   documentation et interface utilisateur en français. Les commentaires
-  expliquent *pourquoi*, pas *quoi*.
+  expliquent _pourquoi_, pas _quoi_.
 - **Tests** : Vitest pour TypeScript, pytest pour Python. Couverture visée
   ≥ 70 % sur les services de `apps/api` (critère d'acceptation Phase 1).
 - **Accents** : le code source et les scripts shell restent en ASCII pour
@@ -121,26 +136,33 @@ notion partagée entre deux applications y va, pas ailleurs.
 
 ## Où en est le projet
 
-| Phase | État | Livrable |
-|---|---|---|
-| 0 — Fondations | **Terminée** (vérification infra en attente de Docker) | Monorepo, CI, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | À faire | API missions complète |
-| 2 — Optimisation | À faire | TSP + VRP benchmarkés |
-| 3 — Mobile TSP | À faire | MVP livreur hors-ligne |
-| 4 — Web VRP | À faire | MVP flotte démontrable |
-| 5 — Trafic | À faire | Re-planification dynamique |
-| 6 — Freemium | À faire | Paiement mobile money |
-| 7 — Durcissement | À faire | Lancement pilote Abidjan |
+| Phase            | État                                             | Livrable                                      |
+| ---------------- | ------------------------------------------------ | --------------------------------------------- |
+| 0 — Fondations   | **Terminée**, sauf smoke test infra (voir dette) | Monorepo, CI, docker-compose, dataset Abidjan |
+| 1 — Backend cœur | À faire                                          | API missions complète                         |
+| 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                         |
+| 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                        |
+| 4 — Web VRP      | À faire                                          | MVP flotte démontrable                        |
+| 5 — Trafic       | À faire                                          | Re-planification dynamique                    |
+| 6 — Freemium     | À faire                                          | Paiement mobile money                         |
+| 7 — Durcissement | À faire                                          | Lancement pilote Abidjan                      |
 
 ### Dette et points ouverts
 
-- **Node.js et Docker ne sont pas installés sur la machine de développement.**
-  Tant que ce n'est pas fait, `pnpm install`, `pnpm test` et `pnpm infra:up`
-  n'ont jamais été exécutés localement : le lockfile `pnpm-lock.yaml` n'existe
-  pas et les critères d'acceptation d'infrastructure de la Phase 0 restent à
-  vérifier. Voir « Mise en route » dans le [README](README.md).
+- **Le smoke test d'infrastructure n'a jamais tourné en vert.** La chaîne
+  TypeScript, elle, est vérifiée : `pnpm install` (lockfile commité), `lint`,
+  `typecheck`, `test` (19 tests), `format:check` et `data:check` passent. Mais
+  les trois critères d'acceptation qui exigent des services démarrés — route
+  OSRM entre deux points d'Abidjan, matrice de durées, géocodage Photon de
+  « Pharmacie Saint Jean Cocody » — restent **à confirmer par le fondateur** :
+  ils demandent un démon Docker et un accès sortant à `download.geofabrik.de`
+  et `download1.graphhopper.com`, indisponibles dans l'environnement où la
+  Phase 0 a été exécutée. La procédure tient en quatre commandes, voir
+  « Environnement local » dans le [README](README.md). **C'est le seul reste à
+  faire avant d'ouvrir la Phase 1.**
 - Versions à confirmer au premier lancement réel : tag de l'image
-  `osrm/osrm-backend`, `PHOTON_VERSION` et l'URL de l'index GraphHopper
-  (variables surchargées en tête des scripts `infra/*/prepare.sh`).
+  `osrm/osrm-backend` (v5.27.1) et l'URL de l'index GraphHopper (variables
+  surchargées en tête des scripts `infra/*/prepare.sh`). `PHOTON_VERSION=0.6.0`
+  est confirmée : le jar se télécharge bien depuis les releases GitHub.
 - Le nom « SIRA » est provisoire (cadrage) et le dépôt de marque OAPI reste à
   faire (cadrage §10.5).
