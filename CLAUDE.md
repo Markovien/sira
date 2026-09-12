@@ -136,30 +136,31 @@ notion partagée entre deux applications y va, pas ailleurs.
 
 ## Où en est le projet
 
-| Phase            | État                                             | Livrable                                      |
-| ---------------- | ------------------------------------------------ | --------------------------------------------- |
-| 0 — Fondations   | **Terminée**, sauf smoke test infra (voir dette) | Monorepo, CI, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | À faire                                          | API missions complète                         |
-| 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                         |
-| 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                        |
-| 4 — Web VRP      | À faire                                          | MVP flotte démontrable                        |
-| 5 — Trafic       | À faire                                          | Re-planification dynamique                    |
-| 6 — Freemium     | À faire                                          | Paiement mobile money                         |
-| 7 — Durcissement | À faire                                          | Lancement pilote Abidjan                      |
+| Phase            | État                                             | Livrable                                            |
+| ---------------- | ------------------------------------------------ | --------------------------------------------------- |
+| 0 — Fondations   | **Terminée**, sauf smoke test infra (voir dette) | Monorepo, CI verte, docker-compose, dataset Abidjan |
+| 1 — Backend cœur | À faire                                          | API missions complète                               |
+| 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                               |
+| 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                              |
+| 4 — Web VRP      | À faire                                          | MVP flotte démontrable                              |
+| 5 — Trafic       | À faire                                          | Re-planification dynamique                          |
+| 6 — Freemium     | À faire                                          | Paiement mobile money                               |
+| 7 — Durcissement | À faire                                          | Lancement pilote Abidjan                            |
 
 ### Dette et points ouverts
 
-- **Le smoke test d'infrastructure n'a jamais tourné en vert.** La chaîne
-  TypeScript, elle, est vérifiée : `pnpm install` (lockfile commité), `lint`,
-  `typecheck`, `test` (19 tests), `format:check` et `data:check` passent. Mais
-  les trois critères d'acceptation qui exigent des services démarrés — route
-  OSRM entre deux points d'Abidjan, matrice de durées, géocodage Photon de
-  « Pharmacie Saint Jean Cocody » — restent **à confirmer par le fondateur** :
-  ils demandent un démon Docker et un accès sortant à `download.geofabrik.de`
-  et `download1.graphhopper.com`, indisponibles dans l'environnement où la
-  Phase 0 a été exécutée. La procédure tient en quatre commandes, voir
-  « Environnement local » dans le [README](README.md). **C'est le seul reste à
-  faire avant d'ouvrir la Phase 1.**
+- **Le smoke test d'infrastructure n'a jamais tourné en vert.** Le reste de la
+  Phase 0 est confirmé : la CI est verte sur GitHub Actions dès le premier
+  déclenchement, ses trois travaux compris (lint/types/tests, jeu de données,
+  scripts et docker-compose). Mais les trois critères d'acceptation qui
+  exigent des services démarrés — route OSRM entre deux points d'Abidjan,
+  matrice de durées, géocodage Photon de « Pharmacie Saint Jean Cocody » —
+  restent **à confirmer par le fondateur** : ils demandent un démon Docker et
+  un accès sortant à `download.geofabrik.de` et `download1.graphhopper.com`,
+  indisponibles dans l'environnement où la Phase 0 a été exécutée. La
+  procédure tient en quatre commandes, voir « Environnement local » dans le
+  [README](README.md). **C'est le seul reste à faire avant d'ouvrir la
+  Phase 1.**
 - Versions à confirmer au premier lancement réel : tag de l'image
   `osrm/osrm-backend` (v5.27.1) et l'URL de l'index GraphHopper (variables
   surchargées en tête des scripts `infra/*/prepare.sh`). `PHOTON_VERSION=0.6.0`

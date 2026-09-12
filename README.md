@@ -15,9 +15,9 @@ gamme, fonctionne hors-ligne, et n'utilise aucune API cartographique payante.
 ## État
 
 **Phase 0 — Fondations : terminée, à une vérification près.** Le monorepo, la
-chaîne qualité, la CI GitHub Actions, l'environnement Docker et le jeu de
-données Abidjan sont en place, et `pnpm lint`, `typecheck`, `test`,
-`format:check` et `data:check` passent.
+chaîne qualité, l'environnement Docker et le jeu de données Abidjan sont en
+place, et la CI GitHub Actions est verte : ses trois travaux passent
+(lint/types/tests, jeu de données, scripts et docker-compose).
 
 Reste un point avant d'ouvrir la Phase 1 : le smoke test d'infrastructure
 (`pnpm infra:smoke`) n'a pas encore tourné en vert, faute d'un démon Docker et
