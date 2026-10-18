@@ -74,5 +74,24 @@ services:
       retries: 10
       start_period: 90s
 
+  # Solveur VRP : construit depuis les sources du monorepo plutot que tire
+  # d'un registre. Le service est specifique au projet, le publier n'aurait
+  # aucun interet et imposerait une etape de release a chaque correctif.
+  vrp-solver:
+    build:
+      context: ../services/vrp-solver
+    container_name: sira-vrp-solver
+    restart: unless-stopped
+    ports:
+      - "${VRP_SOLVER_PORT:-8000}:8000"
+    environment:
+      VRP_SOLVER_TIME_LIMIT_SECONDS: ${VRP_SOLVER_TIME_LIMIT_SECONDS:-10}
+    healthcheck:
+      test: ["CMD-SHELL", 'timeout 3 bash -c "</dev/tcp/localhost/8000" || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
 volumes:
   postgres-data:

@@ -22,6 +22,48 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — VRP : abandonner un arrêt plutôt que de ne rien rendre
+
+**Contexte.** Phase 2, tâche 2. OR-Tools refuse un problème sur-contraint :
+une seule fenêtre horaire infaisable, et la résolution entière échoue.
+
+**Décision.** Chaque arrêt est une disjonction pénalisée : le solveur peut le
+laisser non servi, moyennant un coût assez élevé pour que ce soit un dernier
+recours. Les arrêts écartés sont listés explicitement dans la réponse.
+
+**Pourquoi.** Un dispatcheur qui lance l'optimisation à 17 h et reçoit
+« infaisable » n'a rien à en faire. Une tournée couvrant 43 arrêts sur 45, avec
+les deux restants nommés, se complète à la main en cinq minutes.
+
+**Deux autres choix de la même veine.** Une capacité à zéro vaut « non
+contraint » et non « ne peut rien porter » — beaucoup de livreurs ignorent la
+charge utile de leur tricycle. Et la validation Pydantic refuse une requête mal
+formée à la frontière, plutôt que de la laisser produire une erreur obscure au
+fond d'OR-Tools.
+
+**Résultats mesurés.** Écart de **0,01 %** à la solution publiée de C101
+(829,00 contre 828,94), 10 tournées, aucun client écarté — le critère
+d'acceptation autorisait 15 %. Et 3 véhicules × 45 arrêts d'Abidjan résolus en
+**10,0 s**, pour 15 s autorisées.
+
+**Le test assert 5 %, pas 15 %**, pour la même raison que côté TSP : asserter
+le critère laisserait passer une régression massive sans rien signaler.
+
+**R101 introuvable.** La feuille de route cite C101 **et** R101. C101 et sa
+solution étaient récupérables depuis un dépôt accessible, R101 non — aucune
+des sources essayées ne le servait. Plutôt qu'une instance reconstituée à la
+main, dont la moindre erreur invaliderait la mesure, la couverture est
+complétée par le critère Abidjan, qui teste ce qui compte réellement pour le
+pilote : une flotte réelle sur des points réels. À ajouter si une source fiable
+se présente.
+
+**Référence jamais écrite en dur.** Le coût de C101 est recalculé depuis la
+solution publiée, et le test vérifie que ce calcul tombe à moins de 1 % de la
+meilleure valeur connue (827,3) — ce qui valide le lecteur d'instance en même
+temps que la mesure.
+
+---
+
 ## 2026-10-18 — TSP : descente locale plus redémarrages perturbés
 
 **Contexte.** Phase 2, tâche 1. Critère d'acceptation : écart ≤ 8 % de

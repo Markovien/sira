@@ -98,6 +98,17 @@ séparés, pour qu'un contributeur sans Docker garde une boucle rapide.
 Le client Prisma est généré par un `postinstall`, jamais commité. Détail du
 modèle de données et des choix : [`apps/api/README.md`](apps/api/README.md).
 
+### Solveur VRP (Python)
+
+```bash
+cd services/vrp-solver
+pip install -e ".[dev]"
+pytest -q            # inclut les criteres d'acceptation de la Phase 2
+ruff check . && ruff format --check .
+```
+
+Le service monte aussi avec `pnpm infra:up`, construit depuis les sources.
+
 ### Données de test
 
 ```bash
@@ -168,16 +179,16 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
 
 ## Où en est le projet
 
-| Phase            | État                                              | Livrable                                            |
-| ---------------- | ------------------------------------------------- | --------------------------------------------------- |
-| 0 — Fondations   | Non close : smoke test infra bloqué (voir dette)  | Monorepo, CI verte, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | **Terminée** — 14 routes, couverture 94 %         | API missions complète                               |
-| 2 — Optimisation | **En cours** — TSP fait, reste VRP et `/optimize` | TSP + VRP benchmarkés                               |
-| 3 — Mobile TSP   | À faire                                           | MVP livreur hors-ligne                              |
-| 4 — Web VRP      | À faire                                           | MVP flotte démontrable                              |
-| 5 — Trafic       | À faire                                           | Re-planification dynamique                          |
-| 6 — Freemium     | À faire                                           | Paiement mobile money                               |
-| 7 — Durcissement | À faire                                           | Lancement pilote Abidjan                            |
+| Phase            | État                                               | Livrable                                            |
+| ---------------- | -------------------------------------------------- | --------------------------------------------------- |
+| 0 — Fondations   | Non close : smoke test infra bloqué (voir dette)   | Monorepo, CI verte, docker-compose, dataset Abidjan |
+| 1 — Backend cœur | **Terminée** — 14 routes, couverture 94 %          | API missions complète                               |
+| 2 — Optimisation | **En cours** — TSP et VRP faits, reste `/optimize` | TSP + VRP benchmarkés                               |
+| 3 — Mobile TSP   | À faire                                            | MVP livreur hors-ligne                              |
+| 4 — Web VRP      | À faire                                            | MVP flotte démontrable                              |
+| 5 — Trafic       | À faire                                            | Re-planification dynamique                          |
+| 6 — Freemium     | À faire                                            | Paiement mobile money                               |
+| 7 — Durcissement | À faire                                            | Lancement pilote Abidjan                            |
 
 ### Dette et points ouverts
 
