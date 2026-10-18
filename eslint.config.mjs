@@ -33,7 +33,9 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
-      eqeqeq: ['error', 'always'],
+      // `x == null` teste null ou undefined d'un coup : c'est l'outil exact,
+      // pas une negligence. Toute autre comparaison laxiste reste interdite.
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
     },
   },
   {

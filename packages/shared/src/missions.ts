@@ -1,0 +1,112 @@
+import { z } from 'zod';
+import { MISSION_STATUSES } from './domain.js';
+import {
+  coordinatesSchema,
+  phoneSchema,
+  stopStatusSchema,
+  timeOfDaySchema,
+} from './schemas.js';
+
+/**
+ * Schemas des missions et arrets, cote API.
+ *
+ * Distincts de `stopInputSchema` (schemas.ts), qui decrit le jeu de donnees de
+ * reference et impose un identifiant fourni. Ici l'identifiant est attribue par
+ * le serveur.
+ */
+
+export const missionStatusSchema = z.enum(MISSION_STATUSES);
+
+/** Date de tournee au format AAAA-MM-JJ, sans heure. */
+export const isoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+  .refine((value) => !Number.isNaN(Date.parse(value)), 'Date inexistante');
+
+const optionalId = z.string().min(1).nullable().optional();
+
+export const createMissionSchema = z.object({
+  label: z.string().min(1).max(160).optional(),
+  date: isoDateSchema,
+  startDepotId: optionalId,
+  endDepotId: optionalId,
+  vehicleId: optionalId,
+  driverId: optionalId,
+});
+
+export const updateMissionSchema = createMissionSchema
+  .partial()
+  .extend({ status: missionStatusSchema.optional() })
+  // Un PATCH vide est presque toujours une erreur d'appel : le signaler plutot
+  // que de renvoyer 200 sans rien avoir fait.
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Aucun champ a modifier',
+  });
+
+export const listMissionsQuerySchema = z.object({
+  date: isoDateSchema.optional(),
+  status: missionStatusSchema.optional(),
+  driverId: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().min(1).optional(),
+});
+
+/**
+ * Arret tel que cree par l'API. `informalDescription` n'est pas obligatoire au
+ * niveau du schema — un import CSV depart peut ne pas en avoir — mais c'est le
+ * champ qui fait la valeur du produit, et la base d'adresses le reclame des la
+ * premiere livraison confirmee.
+ */
+export const createStopSchema = z.object({
+  label: z.string().min(1).max(160),
+  lat: coordinatesSchema.shape.lat,
+  lon: coordinatesSchema.shape.lon,
+  addressText: z.string().min(1).max(400),
+  informalDescription: z.string().max(600).nullable().optional(),
+  landmark: z.string().max(200).nullable().optional(),
+  contactName: z.string().max(160).nullable().optional(),
+  contactPhone: phoneSchema.nullable().optional(),
+  timeWindowStart: timeOfDaySchema.nullable().optional(),
+  timeWindowEnd: timeOfDaySchema.nullable().optional(),
+  loadKg: z.coerce.number().nonnegative().max(2000).default(0),
+  volumeL: z.coerce.number().nonnegative().max(20000).default(0),
+  serviceMinutes: z.coerce.number().int().min(0).max(120).default(5),
+  priority: z.enum(['normal', 'high']).default('normal'),
+});
+
+export const updateStopSchema = createStopSchema
+  .partial()
+  .extend({
+    status: stopStatusSchema.optional(),
+    failureReason: z.string().max(400).nullable().optional(),
+    sequence: z.coerce.number().int().min(0).nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Aucun champ a modifier',
+  });
+
+export type CreateMissionInput = z.infer<typeof createMissionSchema>;
+export type UpdateMissionInput = z.infer<typeof updateMissionSchema>;
+export type ListMissionsQuery = z.infer<typeof listMissionsQuerySchema>;
+export type CreateStopInput = z.infer<typeof createStopSchema>;
+export type UpdateStopInput = z.infer<typeof updateStopSchema>;
+
+/**
+ * Une fenetre horaire est soit absente des deux cotes, soit complete et
+ * coherente. Valide a part du schema de l'arret pour que le message pointe la
+ * fenetre et non un champ isole.
+ */
+export function validateTimeWindow(stop: {
+  // `| undefined` explicite : sous exactOptionalPropertyTypes, un champ absent
+  // et un champ a undefined ne sont pas le meme type.
+  timeWindowStart?: string | null | undefined;
+  timeWindowEnd?: string | null | undefined;
+}): string | null {
+  const { timeWindowStart: start, timeWindowEnd: end } = stop;
+  if (start == null && end == null) return null;
+  if (start == null || end == null) {
+    return 'Fenetre horaire incomplete : debut et fin sont requis ensemble';
+  }
+  if (start >= end) return 'La fenetre horaire doit se terminer apres son debut';
+  return null;
+}

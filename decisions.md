@@ -22,6 +22,47 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Cloisonnement par organisation imposé par la signature
+
+**Contexte.** Une mission qui fuite d'une organisation à l'autre, c'est la
+liste des clients d'un concurrent. C'est la propriété de sécurité la plus
+importante de cette API, et celle qu'un oubli d'une seule clause `where`
+suffit à perdre.
+
+**Décision.** Toutes les méthodes de `MissionsService` prennent
+`organizationId` en **premier argument obligatoire**, jamais en option et
+jamais lu depuis un contexte ambiant. Un oubli devient une erreur de
+compilation plutôt qu'une faille silencieuse.
+
+**404 et non 403** sur une ressource d'une autre organisation : répondre
+« interdit » confirmerait son existence, et permettrait d'énumérer les
+missions d'un concurrent en sondant des identifiants.
+
+Les références — véhicule, livreur, dépôt — sont vérifiées comme appartenant à
+l'organisation avant d'être rattachées. Prisma accepterait sinon la clé
+étrangère sans broncher.
+
+**Conséquence.** Quatre tests e2e portent uniquement là-dessus : lecture,
+modification, suppression et accès à un arrêt par la mission d'une autre
+organisation renvoient tous 404.
+
+---
+
+## 2026-10-18 — `eqeqeq` tolère `== null`
+
+**Contexte.** La règle `eqeqeq: always` signalait des `x == null` écrits
+volontairement pour tester null **et** undefined d'un coup — ce que
+`exactOptionalPropertyTypes` rend fréquent.
+
+**Décision.** `eqeqeq: ['error', 'always', { null: 'ignore' }]`. Toute autre
+comparaison laxiste reste interdite.
+
+**Alternative écartée.** Écrire `x === null || x === undefined` partout :
+plus long, et le lecteur finit par ne plus distinguer l'intention de la
+verbosité.
+
+---
+
 ## 2026-10-18 — Le lint construit d'abord (CI rouge, corrigée)
 
 **Contexte.** La CI du commit d'authentification est passée rouge sur l'étape
