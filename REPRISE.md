@@ -99,6 +99,19 @@ Deux pièges déjà rencontrés, qui ne se voient que là :
 
 ---
 
+## Pièges à connaître
+
+- **Migrations Prisma** : `migrate dev` et `migrate diff` ignorent les colonnes
+  générées `geog` et leurs index GiST/trigram, et proposent de les supprimer.
+  Toute migration touchant `Stop`, `Depot` ou `Address` se relit à la main.
+  `test/schema-integrity.e2e.test.ts` est le filet.
+- **Ports 5060 et 5061** : bloqués par la spécification `fetch` (SIP), undici
+  les refuse sans message clair.
+- **`dist` résiduel** : fait passer en local ce qui échoue en CI, ESLint étant
+  _type-aware_. D'où le nettoyage avant vérification.
+- **Un test ignoré ressemble à un test réussi** : vérifier qu'aucun `↓`
+  n'apparaît dans le rapport.
+
 ## Prochaine étape : Phase 3, mobile livreur
 
 Lire d'abord la Phase 3 de [`02-ROADMAP-DEV.md`](02-ROADMAP-DEV.md). Dans
@@ -135,11 +148,9 @@ bash infra/osrm/prepare.sh && bash infra/photon/prepare.sh
 pnpm infra:up && pnpm infra:smoke
 ```
 
-**2. Base d'adresses : mutualisée ou cloisonnée ?**
-Aujourd'hui cloisonnée par organisation. La mutualiser entre clients
-décuplerait sa valeur — c'est l'effet de réseau du cadrage §10.1 — mais engage
-la confidentialité des adresses clientes de chacun. Décision commerciale, pas
-technique. Détail dans [`decisions.md`](decisions.md).
+**2. Base d'adresses — tranché le 18/10/2026 : cloisonnée par organisation**,
+pour la sécurité. `organizationId` est désormais obligatoire en base et la
+suppression d'une organisation emporte ses adresses. Plus rien à décider.
 
 ---
 

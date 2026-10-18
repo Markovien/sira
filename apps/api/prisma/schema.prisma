@@ -5,6 +5,14 @@
 //  - coordonnees : colonnes lat/lon en Float (source de verite, portable) plus
 //    une colonne PostGIS geography ajoutee par migration SQL pour les index
 //    spatiaux. Prisma ne type pas encore geography nativement ;
+//
+// ATTENTION AUX MIGRATIONS. `prisma migrate dev` et `migrate diff` ignorent
+// les colonnes generees `geog` et leurs index GiST et trigram : ils proposent
+// de les supprimer, et de retirer le DEFAULT des colonnes generees — ce qui
+// les casserait. Toute migration touchant Stop, Depot ou Address doit etre
+// RELUE ET CORRIGEE A LA MAIN avant d'etre appliquee. Le test
+// test/schema-integrity.e2e.test.ts echoue si la couche spatiale disparait.
+//
 //  - tout horodatage est en UTC ; l'affichage local est la responsabilite du
 //    client (Abidjan est en UTC+0, mais le multi-pays est prevu — cadrage §10.4).
 
@@ -136,6 +144,13 @@ model Depot {
   missionsFrom Mission[] @relation("MissionStartDepot")
   missionsTo   Mission[] @relation("MissionEndDepot")
 
+  /// Colonne spatiale GENERATED ALWAYS AS, ajoutee par migration SQL : Prisma
+  /// ne sait pas l'exprimer, mais doit savoir qu'elle existe. Sans cette
+  /// declaration, chaque `prisma migrate diff` propose de la supprimer, elle
+  /// et ses index GiST — une migration generee a l'aveugle emporterait toute
+  /// la couche spatiale. Lue uniquement en SQL brut.
+  geog Unsupported("geography(Point, 4326)")?
+
   @@index([organizationId])
 }
 
@@ -249,6 +264,13 @@ model Stop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Colonne spatiale GENERATED ALWAYS AS, ajoutee par migration SQL : Prisma
+  /// ne sait pas l'exprimer, mais doit savoir qu'elle existe. Sans cette
+  /// declaration, chaque `prisma migrate diff` propose de la supprimer, elle
+  /// et ses index GiST — une migration generee a l'aveugle emporterait toute
+  /// la couche spatiale. Lue uniquement en SQL brut.
+  geog Unsupported("geography(Point, 4326)")?
+
   @@index([missionId, sequence])
   @@index([status])
 }
@@ -260,9 +282,19 @@ model Stop {
 /// mais interrogeable globalement — la mutualisation se decidera plus tard,
 /// avec le fondateur, car elle engage la confidentialite des clients.
 model Address {
-  id             String        @id @default(cuid())
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  id String @id @default(cuid())
+
+  /// Obligatoire, et non optionnel : le cloisonnement de la base d'adresses
+  /// est une exigence de securite tranchee par le fondateur (decisions.md).
+  /// Une adresse hors organisation serait invisible a toute requete mais
+  /// resterait en base — des adresses clientes orphelines, que personne ne
+  /// peut plus ni consulter ni purger.
+  organizationId String
+  /// Cascade et non SetNull : supprimer une organisation doit emporter ses
+  /// adresses. La loi ivoirienne n 2013-450 impose de pouvoir supprimer les
+  /// donnees sur demande (cadrage §9, roadmap Phase 7.2) ; des orphelines
+  /// rendraient cette suppression impossible a honorer.
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   label               String
   addressText         String
@@ -283,6 +315,13 @@ model Address {
   updatedAt DateTime @updatedAt
 
   stops Stop[]
+
+  /// Colonne spatiale GENERATED ALWAYS AS, ajoutee par migration SQL : Prisma
+  /// ne sait pas l'exprimer, mais doit savoir qu'elle existe. Sans cette
+  /// declaration, chaque `prisma migrate diff` propose de la supprimer, elle
+  /// et ses index GiST — une migration generee a l'aveugle emporterait toute
+  /// la couche spatiale. Lue uniquement en SQL brut.
+  geog Unsupported("geography(Point, 4326)")?
 
   @@index([organizationId])
   @@index([city, commune])

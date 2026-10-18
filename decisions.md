@@ -22,6 +22,57 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Le cloisonnement descend au niveau de la base
+
+**Contexte.** Le fondateur tranche : la base d'adresses reste **cloisonnée par
+organisation**, pour la sécurité. Le code filtrait déjà sur `organizationId`
+partout — mais la colonne était `String?`, et la relation en `onDelete:
+SetNull`.
+
+**Ce que cela autorisait.** Une adresse sans organisation : invisible à toute
+requête, puisque chacune filtre, mais bien présente en base. Et surtout,
+supprimer une organisation ne supprimait pas ses adresses — elle les rendait
+orphelines. Des adresses de clients réels, que plus personne ne peut consulter
+ni purger. La loi ivoirienne n° 2013-450 impose de pouvoir supprimer les
+données sur demande (cadrage §9) : c'était intenable.
+
+**Décision.** `organizationId` devient obligatoire, et la relation passe en
+`onDelete: Cascade`. Une règle de sécurité tenue uniquement par la discipline
+du code n'est pas tenue : elle descend dans le schéma.
+
+---
+
+## 2026-10-18 — Les migrations Prisma se relisent à la main
+
+**Contexte découvert en écrivant la migration ci-dessus.** `prisma migrate
+diff` a proposé de **supprimer les trois colonnes `geog`**, leurs index GiST,
+les deux index trigram, et de retirer le `DEFAULT` des colonnes générées — ce
+qui les aurait cassées. Prisma ne connaît pas ce que la migration SQL brute a
+créé.
+
+Une migration générée sans relecture aurait donc emporté toute la couche
+spatiale. **Aucun test fonctionnel ne l'aurait vu** : les requêtes de
+proximité seraient simplement tombées en balayage séquentiel.
+
+**Décision, en trois niveaux.**
+
+1. Les colonnes sont déclarées en `Unsupported("geography(Point, 4326)")` dans
+   le schéma : Prisma cesse de proposer leur suppression pure et simple.
+2. Cela ne suffit pas pour les index, ni pour le `DROP DEFAULT`. Toute
+   migration touchant `Stop`, `Depot` ou `Address` se **relit et se corrige à
+   la main**. L'avertissement est en tête du schéma, là où on édite.
+3. `test/schema-integrity.e2e.test.ts` vérifie que les trois colonnes générées
+   et les cinq index existent toujours, et que la cascade fonctionne. C'est le
+   seul filet contre une migration destructrice.
+
+**Alternative écartée.** Exprimer les index GiST et trigram dans le schéma
+Prisma (`@@index(..., type: Gist)` avec `ops: raw(...)`). Possible, mais
+fragile sur une colonne `Unsupported`, et une expression qui dérive
+silencieusement serait pire que l'absence de déclaration — on croirait le
+problème réglé.
+
+---
+
 ## 2026-10-18 — Une flotte optimisée devient une mission par véhicule
 
 **Contexte.** Phase 2, tâche 3. `POST /missions/:id/optimize` doit router vers
@@ -217,10 +268,21 @@ correspondance OSM plausible. La feuille de route dit « Photon d'abord, repli
 sur la base » ; à l'usage le classement inverse sert mieux le livreur, et le
 repli reste assuré dans les deux sens.
 
-**À rouvrir avec le fondateur.** La base est aujourd'hui cloisonnée par
-organisation. La mutualiser entre clients décuplerait sa valeur — c'est
-l'effet de réseau du §10.1 — mais engage la confidentialité des adresses
-clientes. Ce n'est pas une décision technique.
+**Tranché par le fondateur le 18/10/2026 : la base reste cloisonnée par
+organisation**, pour la sécurité. La mutualiser entre clients décuplerait sa
+valeur — c'est l'effet de réseau du §10.1 — mais exposerait les adresses
+clientes de chacun à ses concurrents. La confidentialité l'emporte.
+
+Conséquences à tenir dans les phases suivantes :
+
+- `organizationId` reste **obligatoire** sur chaque lecture et chaque écriture
+  de la table `Address`, au même titre que pour les missions ;
+- l'effet de réseau du cadrage §10.1 se construit **à l'intérieur** de chaque
+  client, pas entre eux — l'argument commercial porte donc sur la précision que
+  gagne une flotte avec ses propres livraisons, pas sur une base commune ;
+- une mutualisation ultérieure resterait possible (opt-in par organisation,
+  ou agrégation anonymisée), mais c'est une décision produit à reprendre de
+  zéro, pas un réglage.
 
 ---
 

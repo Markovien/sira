@@ -43,6 +43,22 @@ portail bleu à côté du maquis »), pas un numéro de rue.
 Chaque livraison confirmée incrémente `confirmationCount` : plus le compteur
 est élevé, plus la position est fiable.
 
+### Migrations : à relire à la main
+
+`prisma migrate dev` et `migrate diff` **ignorent les colonnes générées
+`geog`** et leurs index GiST et trigram. Une migration générée sans relecture
+propose de les supprimer, et de retirer le `DEFAULT` des colonnes générées —
+ce qui les casserait.
+
+Toute migration touchant `Stop`, `Depot` ou `Address` se relit et se corrige à
+la main. Les colonnes sont déclarées en `Unsupported()` dans le schéma, ce qui
+évite au moins leur suppression pure et simple, mais ne suffit pas pour les
+index.
+
+`test/schema-integrity.e2e.test.ts` échoue si la couche spatiale disparaît :
+c'est le seul filet, aucun test fonctionnel ne verrait la différence — les
+requêtes de proximité tomberaient simplement en balayage séquentiel.
+
 ### PostGIS
 
 `Stop`, `Depot` et `Address` portent une colonne `geog` de type
