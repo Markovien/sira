@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   CreateMissionInput,
   CreateStopInput,
@@ -7,6 +7,7 @@ import type {
   UpdateStopInput,
 } from '@sira/shared';
 import { validateTimeWindow } from '@sira/shared';
+import { AddressBookService } from '../geocoding/address-book.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -18,7 +19,12 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class MissionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(MissionsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly addressBook: AddressBookService,
+  ) {}
 
   async create(organizationId: string, input: CreateMissionInput) {
     await this.assertReferencesBelongToOrg(organizationId, input);
@@ -148,7 +154,7 @@ export class MissionsService {
     const completesNow =
       input.status !== undefined && input.status !== 'pending' && stop.completedAt === null;
 
-    return this.prisma.stop.update({
+    const updated = await this.prisma.stop.update({
       where: { id: stopId },
       data: {
         ...toStopData(input),
@@ -158,6 +164,53 @@ export class MissionsService {
         ...(completesNow ? { completedAt: new Date() } : {}),
       },
     });
+
+    // Le moat se construit ici (cadrage §10.1) : chaque livraison reussie
+    // geocode une adresse informelle. Seul `delivered` compte — un echec ou un
+    // report ne prouve rien sur l'exactitude du point.
+    if (input.status === 'delivered') {
+      await this.recordAddressConfirmation(organizationId, updated);
+    }
+
+    return updated;
+  }
+
+  /**
+   * Alimente la base d'adresses sans jamais faire echouer la livraison. Un
+   * livreur qui marque un arret livre, souvent sur un reseau instable, ne doit
+   * pas voir sa requete echouer parce qu'une ecriture annexe a rate.
+   */
+  private async recordAddressConfirmation(
+    organizationId: string,
+    stop: {
+      id: string;
+      label: string;
+      addressText: string;
+      informalDescription: string | null;
+      lat: number;
+      lon: number;
+      addressId: string | null;
+    },
+  ): Promise<void> {
+    try {
+      const { addressId } = await this.addressBook.confirmDelivery({
+        organizationId,
+        label: stop.label,
+        addressText: stop.addressText,
+        informalDescription: stop.informalDescription,
+        lat: stop.lat,
+        lon: stop.lon,
+      });
+
+      if (stop.addressId !== addressId) {
+        await this.prisma.stop.update({ where: { id: stop.id }, data: { addressId } });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Confirmation d'adresse impossible pour l'arret ${stop.id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   /**

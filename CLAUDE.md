@@ -170,7 +170,7 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
 | Phase            | État                                             | Livrable                                            |
 | ---------------- | ------------------------------------------------ | --------------------------------------------------- |
 | 0 — Fondations   | Non close : smoke test infra bloqué (voir dette) | Monorepo, CI verte, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | **En cours** — reste routing et géocodage        | API missions complète                               |
+| 1 — Backend cœur | **En cours** — reste la couverture ≥ 70 %        | API missions complète                               |
 | 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                               |
 | 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                              |
 | 4 — Web VRP      | À faire                                          | MVP flotte démontrable                              |

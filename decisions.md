@@ -22,6 +22,49 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Le moat se construit à la livraison, et ne peut pas la faire échouer
+
+**Contexte.** Le cadrage §10.1 pose la base d'adresses propriétaire comme
+l'actif qui, à terme, vaudra plus que l'application. Reste à décider quand et
+comment elle se remplit.
+
+**Seul `delivered` compte.** Un échec ou un report ne prouve rien sur
+l'exactitude du point — le destinataire était absent, pas l'adresse fausse.
+
+**L'écriture ne peut pas faire échouer la livraison.** Un livreur qui marque un
+arrêt livré, souvent sur un réseau instable au bord d'une voie, ne doit pas
+voir sa requête rejetée parce qu'une écriture annexe a raté. La confirmation
+d'adresse est donc encapsulée : elle journalise et laisse passer.
+
+**Agrégation à 30 m.** C'est la dispersion typique d'un relevé GPS de
+smartphone en ville. Plus large, on fusionnerait deux commerces voisins ; plus
+étroit, on créerait un doublon à chaque livraison.
+
+**Position affinée par moyenne mobile.** Le bruit GPS étant de moyenne nulle,
+chaque confirmation rapproche le point de sa position réelle, et le rayon
+d'agrégation borne la dérive possible. L'alternative — garder la première
+position — est plus simple mais laisse une erreur initiale définitive, sur
+une base dont la précision est précisément la valeur.
+
+**Photon ne lève jamais.** Il renvoie une liste vide quand il est injoignable,
+et la réponse porte `photonAvailable: false` : l'interface doit pouvoir
+signaler un géocodage dégradé plutôt que de laisser croire à une absence de
+résultat. Photon ne connaît que ce qu'OpenStreetMap contient — pas « le portail
+bleu à côté du maquis ».
+
+**Les adresses confirmées passent devant les résultats Photon** dans la
+fusion. Une position vérifiée par une livraison vaut mieux qu'une
+correspondance OSM plausible. La feuille de route dit « Photon d'abord, repli
+sur la base » ; à l'usage le classement inverse sert mieux le livreur, et le
+repli reste assuré dans les deux sens.
+
+**À rouvrir avec le fondateur.** La base est aujourd'hui cloisonnée par
+organisation. La mutualiser entre clients décuplerait sa valeur — c'est
+l'effet de réseau du §10.1 — mais engage la confidentialité des adresses
+clientes. Ce n'est pas une décision technique.
+
+---
+
 ## 2026-10-18 — Client OSRM : POST partout, et erreurs traduites
 
 **Contexte.** La feuille de route décrit le module `routing` comme un client

@@ -149,3 +149,18 @@ export const tableRequestSchema = z.object({
 
 export type RouteRequest = z.infer<typeof routeRequestSchema>;
 export type TableRequest = z.infer<typeof tableRequestSchema>;
+
+// --- Geocodage ---------------------------------------------------------------
+
+export const geocodeSearchSchema = z.object({
+  q: z.string().min(2, 'Au moins deux caracteres').max(200),
+  limit: z.coerce.number().int().min(1).max(20).default(5),
+});
+
+export const geocodeNearbySchema = coordinatesSchema.extend({
+  /** 200 m : le rayon dans lequel un livreur reconnait un lieu a vue. */
+  radiusMeters: z.coerce.number().int().min(10).max(2000).default(200),
+});
+
+export type GeocodeSearchQuery = z.infer<typeof geocodeSearchSchema>;
+export type GeocodeNearbyQuery = z.infer<typeof geocodeNearbySchema>;
