@@ -1,0 +1,19 @@
+{
+  "// ": "Sortie CommonJS : consommee par apps/api, que NestJS compile en CJS.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    // Les sources sont ecrites en ESM ; emettre du CJS depuis cette syntaxe
+    // exige de lever verbatimModuleSyntax, qui interdit toute reecriture.
+    "verbatimModuleSyntax": false,
+    "outDir": "./dist/cjs",
+    "rootDir": "./src",
+    // Les declarations sont emises une seule fois, par la sortie ESM.
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

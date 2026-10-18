@@ -61,6 +61,19 @@ export default tseslint.config(
     // Scripts d'outillage : Node pur, hors projet TS.
     files: ['**/*.mjs', '**/*.js'],
     extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: {
+      sourceType: 'module',
+      // no-undef reste actif — il attrape les fautes de frappe dans ces
+      // scripts, que rien d'autre ne typecheck — d'ou cette liste explicite
+      // plutot qu'une dependance au paquet `globals` pour cinq entrees.
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        __dirname: 'readonly',
+      },
+    },
     rules: { 'no-console': 'off' },
   },
   prettier,

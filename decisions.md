@@ -22,6 +22,36 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Construire `shared` et `tsp-core` en double ESM/CJS
+
+**Contexte.** `@sira/shared` n'exposait que ses sources TypeScript
+(`exports` pointant sur `./src/index.ts`), sans étape de build. Vitest s'en
+accommode — Vite transpile à la volée — et le typecheck passait. Mais le
+binaire de production fait un `require()` : `node dist/main.js` échouait sur
+`Cannot find module .../geo.js`. Un bug invisible à toute la chaîne de
+vérification existante, qui n'aurait éclaté qu'au premier démarrage réel.
+
+**Décision.** Les deux paquets partagés émettent `dist/esm` et `dist/cjs` via
+deux passes `tsc`, plus un marqueur `{"type": ...}` dans chaque dossier. Aucune
+dépendance nouvelle. `apps/api` consomme le CJS, Vite et Metro l'ESM.
+
+**Alternative écartée.** Une sortie CommonJS seule, suffisante pour tous les
+consommateurs actuels : elle priverait le web et le mobile du _tree-shaking_,
+sur des paquets justement destinés à tourner sur des Android d'entrée de gamme.
+
+**Conséquence et garde-fou.** Vérifié dans les deux sens : `require()` et
+`import` renvoient 3627 m sur Plateau→Cocody. Surtout, la classe de bug est
+désormais détectée : `apps/api/scripts/smoke.sh` démarre l'**API compilée**
+contre une vraie base et vérifie `/health` et `/docs-json`, et un travail de CI
+le rejoue sur un service PostGIS. Testé en négatif — l'ancien `exports` cassé
+fait bien échouer le script.
+
+**Leçon retenue.** Le typecheck et les tests unitaires empruntent la résolution
+de Vite, pas celle de Node. Tant qu'un artefact compilé n'a pas démarré pour de
+vrai, il n'est pas vérifié.
+
+---
+
 ## 2026-10-18 — Valider par Zod, pas par `class-validator`
 
 **Contexte.** Le `ValidationPipe` de NestJS exige `class-validator` et des DTO

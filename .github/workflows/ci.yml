@@ -62,6 +62,13 @@ jobs:
       - name: Tests (Vitest)
         run: pnpm test
 
+      # Le typecheck ne voit pas ce que voit le binaire de production : Vitest
+      # resout les paquets de l atelier vers leurs sources TypeScript, le
+      # require() du build vers leur sortie compilee. C est ce second chemin
+      # qui a casse une fois sans qu aucune verification ne le signale.
+      - name: Build
+        run: pnpm build
+
   # --- 2. Jeu de donnees Abidjan --------------------------------------------
   donnees:
     name: Jeu de donnees Abidjan
@@ -106,6 +113,7 @@ jobs:
             infra/osrm/verify-pipeline.sh \
             infra/photon/prepare.sh \
             infra/check-env-example.sh \
+            apps/api/scripts/smoke.sh \
             data/check-generated.sh
 
       # Ne demarre rien (les images OSRM/Photon exigent des donnees preparees
@@ -116,3 +124,56 @@ jobs:
 
       - name: Le .env.example couvre toutes les variables du compose
         run: bash infra/check-env-example.sh
+
+  # --- 4. API compilee, sur une vraie base -----------------------------------
+  api:
+    name: API compilee
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: sira
+          POSTGRES_PASSWORD: sira
+          POSTGRES_DB: sira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sira -d sira"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://sira:sira@localhost:5432/sira?schema=public
+      # Valeurs de test : aucune n ouvre quoi que ce soit, la base est jetable.
+      JWT_ACCESS_SECRET: secret-de-ci-sans-valeur
+      JWT_REFRESH_SECRET: autre-secret-de-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Installer Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Installer les dependances
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # Les migrations creent elles-memes postgis, pg_trgm et unaccent :
+      # l image de service n execute pas infra/postgres/init.
+      - name: Appliquer les migrations
+        run: pnpm --filter @sira/api exec prisma migrate deploy
+
+      - name: Demarrer l API compilee et l interroger
+        run: bash apps/api/scripts/smoke.sh
