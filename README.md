@@ -11,6 +11,7 @@ gamme, fonctionne hors-ligne, et n'utilise aucune API cartographique payante.
 - **Cadrage produit** → [`01-CADRAGE-PROJET.md`](01-CADRAGE-PROJET.md)
 - **Feuille de route** → [`02-ROADMAP-DEV.md`](02-ROADMAP-DEV.md)
 - **Contexte pour Claude Code** → [`CLAUDE.md`](CLAUDE.md)
+- **Journal des décisions** → [`decisions.md`](decisions.md)
 
 ## État
 

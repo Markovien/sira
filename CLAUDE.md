@@ -15,6 +15,9 @@ Documents de référence, à lire avant toute décision structurante :
 
 - [`01-CADRAGE-PROJET.md`](01-CADRAGE-PROJET.md) — vision, business model, risques.
 - [`02-ROADMAP-DEV.md`](02-ROADMAP-DEV.md) — les 8 phases et leurs critères d'acceptation.
+- [`decisions.md`](decisions.md) — journal des décisions : pourquoi chaque choix
+  a été fait et ce qu'il coûte. **Toute décision structurante y est consignée
+  avant d'être implémentée.**
 
 ## Règles non négociables
 
@@ -104,6 +107,8 @@ rôles, types de véhicule, schémas Zod, helpers géographiques. Toute nouvelle
 notion partagée entre deux applications y va, pas ailleurs.
 
 ### Choix d'architecture déjà arrêtés
+
+Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel prix.
 
 | Décision                                                                                       | Motif                                                                                                                           |
 | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
