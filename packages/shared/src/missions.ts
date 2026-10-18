@@ -164,3 +164,19 @@ export const geocodeNearbySchema = coordinatesSchema.extend({
 
 export type GeocodeSearchQuery = z.infer<typeof geocodeSearchSchema>;
 export type GeocodeNearbyQuery = z.infer<typeof geocodeNearbySchema>;
+
+// --- Optimisation ------------------------------------------------------------
+
+export const optimizeRequestSchema = z.object({
+  /**
+   * Vehicules a utiliser. Un seul (ou aucun) route vers le TSP embarque ;
+   * plusieurs declenchent le solveur VRP et scindent la mission en autant de
+   * tournees. Par defaut, le vehicule deja affecte a la mission.
+   */
+  vehicleIds: z.array(z.string().min(1)).max(50).optional(),
+  timeLimitMs: z.coerce.number().int().min(100).max(60_000).optional(),
+  /** Heure de depart de la tournee, en HH:MM. Defaut : 07:00. */
+  departureTime: timeOfDaySchema.optional(),
+});
+
+export type OptimizeRequest = z.infer<typeof optimizeRequestSchema>;

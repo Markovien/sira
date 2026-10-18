@@ -4,6 +4,7 @@ import { ConfigModule } from './config/config.module';
 import { GeocodingModule } from './geocoding/geocoding.module';
 import { HealthModule } from './health/health.module';
 import { MissionsModule } from './missions/missions.module';
+import { OptimizeModule } from './optimize/optimize.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RoutingModule } from './routing/routing.module';
 
@@ -13,6 +14,7 @@ import { RoutingModule } from './routing/routing.module';
     PrismaModule,
     AuthModule,
     MissionsModule,
+    OptimizeModule,
     GeocodingModule,
     RoutingModule,
     HealthModule,

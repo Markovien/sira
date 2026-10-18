@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   routeRequestSchema,
@@ -23,8 +23,13 @@ import { OsrmService } from './osrm.service';
 export class RoutingController {
   constructor(private readonly osrm: OsrmService) {}
 
+  // POST pour tenir 100 points et garder les coordonnees hors des journaux
+  // d'acces, mais 200 et non 201 : ces routes interrogent, elles ne creent
+  // rien. Le defaut de NestJS est trompeur pour l'appelant.
   @Post('route')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Itineraire passant par les points, dans l ordre fourni' })
+  @ApiResponse({ status: 200, description: 'Itineraire trouve' })
   @ApiResponse({ status: 422, description: 'Aucun itineraire entre ces points' })
   @ApiResponse({ status: 503, description: 'Service de routage indisponible' })
   route(@Body(new ZodValidationPipe(routeRequestSchema)) dto: RouteRequest) {
@@ -32,6 +37,7 @@ export class RoutingController {
   }
 
   @Post('table')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Matrice N x N des durees entre les points',
     description: 'Socle du solveur TSP et du solveur VRP. Maximum 100 points.',

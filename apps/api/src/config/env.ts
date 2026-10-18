@@ -35,6 +35,8 @@ export const envSchema = z.object({
 
   OSRM_URL: z.string().url().default('http://localhost:5000'),
   PHOTON_URL: z.string().url().default('http://localhost:2322'),
+  VRP_SOLVER_URL: z.string().url().default('http://localhost:8000'),
+  VRP_SOLVER_TIME_LIMIT_SECONDS: z.coerce.number().int().min(1).max(300).default(10),
 });
 
 export type Env = z.infer<typeof envSchema>;

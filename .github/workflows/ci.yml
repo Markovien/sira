@@ -183,6 +183,9 @@ jobs:
       # Valeurs de test : aucune n ouvre quoi que ce soit, la base est jetable.
       JWT_ACCESS_SECRET: secret-de-ci-sans-valeur
       JWT_REFRESH_SECRET: autre-secret-de-ci
+      # 127.0.0.1 et non localhost : undici n a pas de repli IPv4.
+      OSRM_URL: http://127.0.0.1:5000
+      VRP_SOLVER_URL: http://127.0.0.1:8000
 
     steps:
       - uses: actions/checkout@v4
@@ -206,6 +209,51 @@ jobs:
       # l image de service n execute pas infra/postgres/init.
       - name: Appliquer les migrations
         run: pnpm --filter @sira/api exec prisma migrate deploy
+
+      # OSRM et le solveur VRP doivent tourner pour de vrai : les tests
+      # d orchestration verifient precisement la chaine complete, et sans eux
+      # ils seraient ignores — le chemin le plus complexe de la Phase 2 ne
+      # serait jamais exerce en CI. L extrait synthetique suffit : 19 lignes,
+      # aucun telechargement.
+      - name: Demarrer OSRM sur l extrait synthetique
+        run: |
+          work="$(mktemp -d)"
+          cp infra/osrm/smoke-synthetic.osm "$work/"
+          image=osrm/osrm-backend:v5.25.0
+          docker run --rm -v "$work:/data" "$image" \
+            osrm-extract -p /opt/car.lua /data/smoke-synthetic.osm
+          docker run --rm -v "$work:/data" "$image" osrm-partition /data/smoke-synthetic.osrm
+          docker run --rm -v "$work:/data" "$image" osrm-customize /data/smoke-synthetic.osrm
+          docker run -d --name sira-osrm-ci -p 5000:5000 -v "$work:/data:ro" "$image" \
+            osrm-routed --algorithm mld --max-table-size 200 /data/smoke-synthetic.osrm
+          for _ in $(seq 1 30); do
+            curl -fsS --max-time 2 \
+              "http://127.0.0.1:5000/route/v1/driving/-4.0212,5.3251;-3.9958,5.3457" \
+              >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "OSRM n a pas demarre" >&2
+          docker logs sira-osrm-ci >&2
+          exit 1
+
+      - name: Installer Python pour le solveur VRP
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Demarrer le solveur VRP
+        run: |
+          pip install --quiet -e ./services/vrp-solver
+          (cd services/vrp-solver && nohup python -m uvicorn app.main:app \
+            --host 127.0.0.1 --port 8000 > /tmp/vrp.log 2>&1 &)
+          for _ in $(seq 1 30); do
+            curl -fsS --max-time 2 http://127.0.0.1:8000/health >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "Le solveur VRP n a pas demarre" >&2
+          cat /tmp/vrp.log >&2
+          exit 1
 
       # Unitaires et bout en bout dans la meme passe, avec le seuil de
       # couverture de la Phase 1 : >= 70 % sur les services. Les deux sont

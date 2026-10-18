@@ -22,6 +22,58 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Une flotte optimisée devient une mission par véhicule
+
+**Contexte.** Phase 2, tâche 3. `POST /missions/:id/optimize` doit router vers
+le TSP embarqué ou vers le solveur VRP, puis « persister l'ordre et les ETA ».
+Avec plusieurs véhicules, le résultat est plusieurs tournées — or le modèle
+n'attache qu'un véhicule et un livreur à une mission.
+
+**Décision.** La mission d'origine garde la première tournée ; les suivantes
+deviennent des missions sœurs, créées dans la même transaction, chacune avec
+son véhicule. Un arrêt change de mission, jamais de contenu.
+
+**Pourquoi.** C'est ce dont le mobile a besoin dès la Phase 3 : un livreur se
+connecte et ne voit que sa tournée. Un champ `routeIndex` sur `Stop` aurait
+évité de créer des missions, mais aurait obligé chaque client à filtrer, et
+aurait rendu impossible d'affecter un livreur distinct à chaque tournée.
+
+**Le choix du solveur n'est pas une préférence.** Avec un seul véhicule, le TSP
+embarqué rend l'optimum en quelques centaines de millisecondes sans sortir du
+processus ; appeler un microservice Python pour cela serait un aller-retour
+réseau gratuit. C'est aussi le même code que fera tourner le mobile hors ligne.
+
+**Une flotte exige un dépôt.** Sans point de départ commun, « trois véhicules »
+ne définit pas un problème. Refusé en 400 plutôt que résolu de travers.
+
+---
+
+## 2026-10-18 — Un test ignoré doit se voir (deux défauts trouvés)
+
+**Contexte.** Les tests d'orchestration exigent OSRM. Je les avais écrits avec
+un `if (!osrmAvailable) return;` — un saut silencieux.
+
+**Ce que ça a masqué.** La suite affichait « 6 passed ». En réalité **4 tests
+sur 6 ne tournaient pas**, dont celui du fractionnement VRP, le plus complexe
+du lot. Le silence ressemblait au succès.
+
+**Décision.** Sauts explicites via `context.skip()`, qui les fait apparaître
+dans le rapport. Et, plutôt que de tolérer l'absence d'OSRM en CI, le travail
+`api` démarre désormais OSRM sur l'extrait synthétique **et** le solveur VRP :
+sans eux, le chemin le plus complexe de la Phase 2 ne serait jamais exercé
+ailleurs que sur ma machine.
+
+**Le défaut que la sonde a révélé.** Elle recevait **201** au lieu de 200.
+`POST /routing/route` et `POST /routing/table` interrogent — elles ne créent
+rien — mais NestJS répond 201 par défaut sur POST. Même classe que le défaut
+déjà corrigé sur `/geocoding/nearby`. Corrigé, et la sonde échoue maintenant
+explicitement si le 201 revient.
+
+**Leçon.** Un test qui ne tourne pas est pire qu'un test absent : il occupe la
+place d'une vérification et en donne l'apparence.
+
+---
+
 ## 2026-10-18 — VRP : abandonner un arrêt plutôt que de ne rien rendre
 
 **Contexte.** Phase 2, tâche 2. OR-Tools refuse un problème sur-contraint :

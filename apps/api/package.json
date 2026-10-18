@@ -27,6 +27,7 @@
     "@nestjs/swagger": "^8.0.0",
     "@prisma/client": "^5.22.0",
     "@sira/shared": "workspace:*",
+    "@sira/tsp-core": "workspace:*",
     "bcrypt": "^6.0.0",
     "exceljs": "^4.4.0",
     "papaparse": "^5.7.0",
