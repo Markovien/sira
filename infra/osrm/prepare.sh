@@ -16,7 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${SCRIPT_DIR}/data"
 
-OSRM_IMAGE="${OSRM_IMAGE:-osrm/osrm-backend:v5.27.1}"
+OSRM_IMAGE="${OSRM_IMAGE:-osrm/osrm-backend:v5.25.0}"
 # Geofabrik nomme l'extrait 'ivory-coast' (et non 'cote-divoire').
 OSM_EXTRACT_URL="${OSM_EXTRACT_URL:-https://download.geofabrik.de/africa/ivory-coast-latest.osm.pbf}"
 PBF_NAME="$(basename "${OSM_EXTRACT_URL}")"

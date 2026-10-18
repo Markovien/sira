@@ -149,21 +149,26 @@ notion partagée entre deux applications y va, pas ailleurs.
 
 ### Dette et points ouverts
 
-- **Le smoke test d'infrastructure n'a jamais tourné en vert.** Le reste de la
-  Phase 0 est confirmé : la CI est verte sur GitHub Actions dès le premier
-  déclenchement, ses trois travaux compris (lint/types/tests, jeu de données,
-  scripts et docker-compose). Mais les trois critères d'acceptation qui
-  exigent des services démarrés — route OSRM entre deux points d'Abidjan,
-  matrice de durées, géocodage Photon de « Pharmacie Saint Jean Cocody » —
-  restent **à confirmer par le fondateur** : ils demandent un démon Docker et
-  un accès sortant à `download.geofabrik.de` et `download1.graphhopper.com`,
-  indisponibles dans l'environnement où la Phase 0 a été exécutée. La
-  procédure tient en quatre commandes, voir « Environnement local » dans le
-  [README](README.md). **C'est le seul reste à faire avant d'ouvrir la
-  Phase 1.**
-- Versions à confirmer au premier lancement réel : tag de l'image
-  `osrm/osrm-backend` (v5.27.1) et l'URL de l'index GraphHopper (variables
-  surchargées en tête des scripts `infra/*/prepare.sh`). `PHOTON_VERSION=0.6.0`
-  est confirmée : le jar se télécharge bien depuis les releases GitHub.
+- **Le smoke test d'infrastructure reste à passer sur les vraies données.**
+  Tout le reste est confirmé par exécution réelle : la CI est verte sur
+  GitHub Actions ; `docker compose up` démarre bien PostgreSQL, dont le script
+  d'init crée `postgis`, `postgis_topology`, `pg_trgm` et `unaccent` ; la
+  chaîne OSRM (image, pipeline MLD, `/route`, `/table`) est validée par
+  `infra/osrm/verify-pipeline.sh` ; Photon démarre et accepte les drapeaux du
+  compose. Le smoke test lui-même passe 4 de ses 5 contrôles.
+  Ne manque que le géocodage de « Pharmacie Saint Jean Cocody », et le fait
+  que la route OSRM a été vérifiée sur un extrait synthétique plutôt que sur
+  Abidjan. Les deux tiennent à une seule cause : `download.geofabrik.de` et
+  `download1.graphhopper.com` sont refusés par la politique réseau de
+  l'environnement d'exécution. Sur un poste sans cette restriction, les quatre
+  commandes de « Environnement local » dans le [README](README.md) closent la
+  Phase 0.
+- Versions : toutes confirmées par exécution réelle. Le tag
+  `osrm/osrm-backend:v5.27.1` initialement épinglé **n'existait pas** — aucun
+  `v5.27.x` n'est publié ; corrigé en `v5.25.0`, le dernier tag stable, validé
+  par `bash infra/osrm/verify-pipeline.sh`. `PHOTON_VERSION=0.6.0` est
+  confirmée (jar récupéré, et `eclipse-temurin:21-jre` accepte les six
+  drapeaux du compose). Reste à confirmer au premier lancement réel : l'URL de
+  l'index GraphHopper, le seul élément jamais atteint.
 - Le nom « SIRA » est provisoire (cadrage) et le dépôt de marque OAPI reste à
   faire (cadrage §10.5).

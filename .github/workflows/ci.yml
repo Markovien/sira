@@ -103,6 +103,7 @@ jobs:
             infra/compose.sh \
             infra/smoke-test.sh \
             infra/osrm/prepare.sh \
+            infra/osrm/verify-pipeline.sh \
             infra/photon/prepare.sh \
             infra/check-env-example.sh \
             data/check-generated.sh

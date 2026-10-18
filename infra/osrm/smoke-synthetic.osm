@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="sira-smoke-synthetic">
+ <bounds minlat="5.3200" minlon="-4.0250" maxlat="5.3500" maxlon="-3.9900"/>
+ <node id="1" lat="5.3251" lon="-4.0212" version="1"/>
+ <node id="2" lat="5.3300" lon="-4.0150" version="1"/>
+ <node id="3" lat="5.3380" lon="-4.0050" version="1"/>
+ <node id="4" lat="5.3457" lon="-3.9958" version="1"/>
+ <node id="5" lat="5.3300" lon="-3.9980" version="1"/>
+ <way id="100" version="1">
+  <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/>
+  <tag k="highway" v="primary"/>
+  <tag k="name" v="Axe synthetique A"/>
+ </way>
+ <way id="101" version="1">
+  <nd ref="2"/><nd ref="5"/><nd ref="4"/>
+  <tag k="highway" v="secondary"/>
+  <tag k="name" v="Axe synthetique B"/>
+ </way>
+</osm>

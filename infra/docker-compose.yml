@@ -33,7 +33,7 @@ services:
   # Routage : pipeline MLD (et non CH) — requis pour reinjecter les vitesses
   # trafic via osrm-customize en Phase 5, sans re-traiter tout l'extrait.
   osrm:
-    image: osrm/osrm-backend:v5.27.1
+    image: osrm/osrm-backend:v5.25.0
     container_name: sira-osrm
     restart: unless-stopped
     command: >

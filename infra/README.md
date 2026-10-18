@@ -64,6 +64,21 @@ constitue l'actif stratégique décrit au §10.1 du cadrage.
 
 ## Vérification
 
+### Sans les données réelles
+
+```bash
+bash infra/osrm/verify-pipeline.sh
+```
+
+Rejoue le pipeline MLD complet sur `osrm/smoke-synthetic.osm` — cinq nœuds et
+deux routes autour d'Abidjan — puis interroge `/route` et `/table`. Deux
+minutes, aucun téléchargement de 2 Go. Cela contrôle ce qui casse en silence :
+le tag de l'image, le chemin du profil Lua, l'enchaînement
+extract/partition/customize et les options de `osrm-routed`. C'est ce qui a
+permis de découvrir que le tag d'image initialement épinglé n'existait pas.
+
+### Avec les données réelles
+
 `infra/smoke-test.sh` contrôle les quatre critères d'acceptation de la Phase 0 :
 PostGIS répond, OSRM renvoie une route Plateau → Cocody puis une matrice de
 durées, Photon géocode « Pharmacie Saint Jean Cocody ». Il vérifie aussi que la
