@@ -22,6 +22,39 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Un import tolère les lignes fautives, l'API non
+
+**Contexte.** `POST /missions/:id/stops/import` reçoit des fichiers saisis à
+la main dans un tableur : en-têtes accentués, séparateur point-virgule,
+colonnes maison, quelques lignes bancales.
+
+**Décision — une ligne fautive n'annule pas l'import.** Les lignes valides
+entrent, et la réponse rend le détail des rejets, numérotés **comme dans le
+tableur** (en-tête comptée, donc à partir de 2). Un dispatcheur qui dépose
+45 courses et reçoit « erreur ligne 12 » sans rien d'importé perd sa matinée.
+
+**Les en-têtes sont reconnus par synonymes**, français et anglais, accents,
+casse et séparateurs indifférents : « Téléphone », « tel contact » et « PHONE »
+désignent le même champ. Les colonnes inconnues sont **listées dans la
+réponse** plutôt qu'ignorées en silence — une colonne « Poids » mal orthographiée
+doit se voir, pas disparaître.
+
+**La tolérance s'arrête à la frontière du fichier.** `importStopSchema`
+convertit les chaînes en nombres pour les coordonnées ; `createStopSchema`,
+que servent les clients JSON, reste strict. Un mobile ou un dashboard n'a
+aucune raison d'envoyer une latitude sous forme de texte, et accepter le
+laxisme partout finit par masquer de vrais défauts d'appel.
+
+**Garde-fous** : 2 Mo et 1000 lignes maximum, vérifiés avant toute analyse.
+L'insertion des lignes valides se fait en un seul `createMany` : un import à
+moitié appliqué laisserait le dispatcheur incapable de savoir quoi rejouer.
+
+**Alternative écartée.** `xlsx` (SheetJS) pour le format Excel : le paquet npm
+n'est plus mis à jour et traîne des avis de sécurité. `exceljs`, maintenu, fait
+le travail.
+
+---
+
 ## 2026-10-18 — Cloisonnement par organisation imposé par la signature
 
 **Contexte.** Une mission qui fuite d'une organisation à l'autre, c'est la

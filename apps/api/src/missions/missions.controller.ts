@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,8 +10,17 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   createMissionSchema,
   createStopSchema,
@@ -28,12 +38,16 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { MissionsService } from './missions.service';
+import { MAX_IMPORT_BYTES, StopsImportService } from './stops-import.service';
 
 @ApiTags('missions')
 @ApiBearerAuth()
 @Controller('missions')
 export class MissionsController {
-  constructor(private readonly missions: MissionsService) {}
+  constructor(
+    private readonly missions: MissionsService,
+    private readonly imports: StopsImportService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Liste les missions de l organisation' })
@@ -107,6 +121,48 @@ export class MissionsController {
     @Body(new ZodValidationPipe(updateStopSchema)) dto: UpdateStopInput,
   ) {
     return this.missions.updateStop(user.organizationId, missionId, stopId, dto);
+  }
+
+  @Roles('dispatcher', 'admin')
+  @Post(':id/stops/import')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMPORT_BYTES } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Importe des arrets depuis un fichier CSV ou XLSX',
+    description:
+      'Les en-tetes sont reconnus en francais comme en anglais, accents et casse indifferents. Une ligne fautive n annule pas l import : la reponse rend le compte des arrets crees et le detail des lignes rejetees.',
+  })
+  @ApiResponse({
+    status: 201,
+    schema: {
+      example: {
+        created: 43,
+        rejected: 2,
+        errors: [{ row: 12, field: 'lat', message: 'Expected number, received nan' }],
+        ignoredColumns: ['Commentaire interne'],
+      },
+    },
+  })
+  async importStops(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('id') missionId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    if (!file) throw new BadRequestException('Aucun fichier recu (champ « file » attendu)');
+
+    const parsed = await this.imports.parse(file);
+    const { created } = await this.missions.addStops(
+      user.organizationId,
+      missionId,
+      parsed.stops,
+    );
+
+    return {
+      created,
+      rejected: parsed.errors.length,
+      errors: parsed.errors,
+      ignoredColumns: parsed.ignoredColumns,
+    };
   }
 
   @Roles('dispatcher', 'admin')

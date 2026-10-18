@@ -160,6 +160,38 @@ export class MissionsService {
     });
   }
 
+  /**
+   * Insere en une transaction : soit les arrets valides entrent tous, soit
+   * aucun. Un import a moitie applique laisserait le dispatcheur incapable de
+   * savoir quoi rejouer.
+   */
+  async addStops(organizationId: string, missionId: string, inputs: CreateStopInput[]) {
+    await this.findOne(organizationId, missionId);
+    if (inputs.length === 0) return { created: 0 };
+
+    const created = await this.prisma.stop.createMany({
+      data: inputs.map((input) => ({
+        missionId,
+        label: input.label,
+        lat: input.lat,
+        lon: input.lon,
+        addressText: input.addressText,
+        loadKg: input.loadKg,
+        volumeL: input.volumeL,
+        serviceMinutes: input.serviceMinutes,
+        priority: input.priority,
+        informalDescription: input.informalDescription ?? null,
+        landmark: input.landmark ?? null,
+        contactName: input.contactName ?? null,
+        contactPhone: input.contactPhone ?? null,
+        timeWindowStart: input.timeWindowStart ?? null,
+        timeWindowEnd: input.timeWindowEnd ?? null,
+      })),
+    });
+
+    return { created: created.count };
+  }
+
   async removeStop(organizationId: string, missionId: string, stopId: string): Promise<void> {
     await this.findOne(organizationId, missionId);
     const { count } = await this.prisma.stop.deleteMany({ where: { id: stopId, missionId } });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MISSION_STATUSES } from './domain.js';
+import { COTE_DIVOIRE_BBOX } from './geo.js';
 import {
   coordinatesSchema,
   phoneSchema,
@@ -73,6 +74,20 @@ export const createStopSchema = z.object({
   serviceMinutes: z.coerce.number().int().min(0).max(120).default(5),
   priority: z.enum(['normal', 'high']).default('normal'),
 });
+
+/**
+ * Variante tolerante pour l'import de fichiers : un CSV ne contient que des
+ * chaines, et un tableur ecrit volontiers « 5,3457 » ou « 5.3457 » selon la
+ * locale. La conversion est admise ici, et nulle part ailleurs — le contrat de
+ * l'API reste strict pour les clients JSON, qui n'ont aucune raison d'envoyer
+ * une coordonnee sous forme de texte.
+ */
+export const importStopSchema = createStopSchema.extend({
+  lat: z.coerce.number().min(COTE_DIVOIRE_BBOX.minLat).max(COTE_DIVOIRE_BBOX.maxLat),
+  lon: z.coerce.number().min(COTE_DIVOIRE_BBOX.minLon).max(COTE_DIVOIRE_BBOX.maxLon),
+});
+
+export type ImportStopInput = z.infer<typeof importStopSchema>;
 
 export const updateStopSchema = createStopSchema
   .partial()

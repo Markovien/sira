@@ -221,6 +221,50 @@ describe('Missions', () => {
     expect(res.status).toBe(404);
   });
 
+  it('importe un CSV : cree les lignes valides et rend compte des rejets', async () => {
+    const csv = [
+      'Libellé;Latitude;Longitude;Adresse;Poids (kg);Commentaire interne',
+      'Boutique Maroc;5.3257;-4.0757;Quartier Maroc, Yopougon;8;RAS',
+      'Ligne fautive;pas-un-nombre;-4.01;Plateau;3;',
+      'Clinique Banco 2;5.3558;-4.0607;Banco 2, Yopougon;15;',
+    ].join('\n');
+
+    const res = await request(app.getHttpServer())
+      .post(`/missions/${missionId}/stops/import`)
+      .set(auth(tokenA))
+      .attach('file', Buffer.from(csv, 'utf8'), 'courses.csv');
+
+    expect(res.status).toBe(201);
+    expect(res.body.created).toBe(2);
+    expect(res.body.rejected).toBeGreaterThan(0);
+    expect(res.body.errors[0].row).toBe(3);
+    expect(res.body.ignoredColumns).toEqual(['Commentaire interne']);
+
+    const mission = await request(app.getHttpServer())
+      .get(`/missions/${missionId}`)
+      .set(auth(tokenA));
+    const labels = mission.body.stops.map((s: { label: string }) => s.label);
+    expect(labels).toContain('Boutique Maroc');
+    expect(labels).toContain('Clinique Banco 2');
+    expect(labels).not.toContain('Ligne fautive');
+  });
+
+  it('refuse un import vers la mission d une autre organisation', async () => {
+    const csv = 'nom,lat,lon,adresse\nBoutique,5.33,-4.01,Plateau';
+    const res = await request(app.getHttpServer())
+      .post(`/missions/${missionId}/stops/import`)
+      .set(auth(tokenB))
+      .attach('file', Buffer.from(csv, 'utf8'), 'courses.csv');
+    expect(res.status).toBe(404);
+  });
+
+  it('refuse un import sans fichier', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/missions/${missionId}/stops/import`)
+      .set(auth(tokenA));
+    expect(res.status).toBe(400);
+  });
+
   it('supprime la mission et ses arrets en cascade', async () => {
     const res = await request(app.getHttpServer())
       .delete(`/missions/${missionId}`)

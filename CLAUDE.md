@@ -167,16 +167,16 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
 
 ## Où en est le projet
 
-| Phase            | État                                              | Livrable                                            |
-| ---------------- | ------------------------------------------------- | --------------------------------------------------- |
-| 0 — Fondations   | Non close : smoke test infra bloqué (voir dette)  | Monorepo, CI verte, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | **En cours** — socle, Prisma, auth, CRUD missions | API missions complète                               |
-| 2 — Optimisation | À faire                                           | TSP + VRP benchmarkés                               |
-| 3 — Mobile TSP   | À faire                                           | MVP livreur hors-ligne                              |
-| 4 — Web VRP      | À faire                                           | MVP flotte démontrable                              |
-| 5 — Trafic       | À faire                                           | Re-planification dynamique                          |
-| 6 — Freemium     | À faire                                           | Paiement mobile money                               |
-| 7 — Durcissement | À faire                                           | Lancement pilote Abidjan                            |
+| Phase            | État                                             | Livrable                                            |
+| ---------------- | ------------------------------------------------ | --------------------------------------------------- |
+| 0 — Fondations   | Non close : smoke test infra bloqué (voir dette) | Monorepo, CI verte, docker-compose, dataset Abidjan |
+| 1 — Backend cœur | **En cours** — reste routing et géocodage        | API missions complète                               |
+| 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                               |
+| 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                              |
+| 4 — Web VRP      | À faire                                          | MVP flotte démontrable                              |
+| 5 — Trafic       | À faire                                          | Re-planification dynamique                          |
+| 6 — Freemium     | À faire                                          | Paiement mobile money                               |
+| 7 — Durcissement | À faire                                          | Lancement pilote Abidjan                            |
 
 ### Dette et points ouverts
 

@@ -17,7 +17,9 @@
 
     "target": "ES2022",
     "lib": ["ES2022"],
-    "types": ["node"],
+    // multer : @types/multer augmente le namespace Express ; sans cette
+    // entree, Express.Multer.File reste introuvable.
+    "types": ["node", "multer"],
     "outDir": "./dist",
     "baseUrl": ".",
     "noEmit": true,
