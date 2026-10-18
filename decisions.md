@@ -22,6 +22,33 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Mesurer la couverture sur unitaires et e2e ensemble
+
+**Contexte.** Critère d'acceptation de la Phase 1 : ≥ 70 % sur les services.
+Reste à décider ce qu'on mesure.
+
+**Décision.** Une passe unique couvrant unitaires **et** bout en bout. Les deux
+sont indissociables ici : un service NestJS n'est presque jamais exercé par un
+test unitaire seul, et mesurer sans les e2e donnerait un chiffre élevé qui ne
+dirait rien de ce qui est réellement testé.
+
+Le seuil porte sur `src/**/*.service.ts` et non sur le dépôt entier. Les
+modules, décorateurs et `main.ts` sont exclus : les couvrir ne mesurerait que
+le fait d'avoir démarré l'application.
+
+**Résultat.** 94,19 % de lignes, aucun service sous le seuil. Le gate a été
+**vérifié en négatif** — seuil monté à 99 %, la mesure échoue bien. C'est la
+leçon du commit `fix(ci)` : une déclaration que rien n'applique ne protège de
+rien.
+
+**Lacune comblée au passage.** `photon.service.ts` plafonnait à 59 %, parce que
+Photon n'est pas joignable dans l'environnement de test et que seul son chemin
+d'échec était exercé. Sept tests contre un faux serveur HTTP local couvrent
+désormais l'analyse des réponses — notamment l'ordre `[lon, lat]` du GeoJSON,
+où se cache la même inversion que côté OSRM.
+
+---
+
 ## 2026-10-18 — Le moat se construit à la livraison, et ne peut pas la faire échouer
 
 **Contexte.** Le cadrage §10.1 pose la base d'adresses propriétaire comme

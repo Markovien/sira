@@ -28,6 +28,8 @@
     // hors du constructeur dans certains cas.
     "strictPropertyInitialization": false
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "vitest.e2e.config.ts"],
+  // Motif generique et non liste explicite : une config de test ajoutee ne
+  // doit pas sortir du typecheck par simple oubli — c'est deja arrive.
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest*.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

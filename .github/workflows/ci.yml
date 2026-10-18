@@ -175,10 +175,13 @@ jobs:
       - name: Appliquer les migrations
         run: pnpm --filter @sira/api exec prisma migrate deploy
 
-      # Supertest contre une vraie base : parcours d inscription, connexion,
-      # rotation du jeton de rafraichissement et deconnexion.
-      - name: Tests de bout en bout (Supertest)
-        run: pnpm --filter @sira/api test:e2e
+      # Unitaires et bout en bout dans la meme passe, avec le seuil de
+      # couverture de la Phase 1 : >= 70 % sur les services. Les deux sont
+      # indissociables — un service NestJS n est presque jamais exerce par un
+      # test unitaire seul, et mesurer sans les e2e donnerait un chiffre qui ne
+      # dit rien de ce qui est reellement teste.
+      - name: Tests et couverture (seuil 70 % sur les services)
+        run: pnpm --filter @sira/api test:cov
 
       - name: Demarrer l API compilee et l interroger
         run: bash apps/api/scripts/smoke.sh

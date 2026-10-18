@@ -89,6 +89,7 @@ pnpm --filter @sira/api prisma:deploy       # applique les migrations
 pnpm --filter @sira/api dev                 # http://localhost:3000, doc sur /docs
 pnpm --filter @sira/api prisma:studio       # explorateur de base
 pnpm --filter @sira/api test:e2e            # Supertest — exige la base demarree
+pnpm --filter @sira/api test:cov            # unitaires + e2e, avec seuil de couverture
 ```
 
 `pnpm test` reste sans dépendance externe : les tests de bout en bout sont
@@ -170,8 +171,8 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
 | Phase            | État                                             | Livrable                                            |
 | ---------------- | ------------------------------------------------ | --------------------------------------------------- |
 | 0 — Fondations   | Non close : smoke test infra bloqué (voir dette) | Monorepo, CI verte, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | **En cours** — reste la couverture ≥ 70 %        | API missions complète                               |
-| 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                               |
+| 1 — Backend cœur | **Terminée** — 14 routes, couverture 94 %        | API missions complète                               |
+| 2 — Optimisation | **À démarrer**                                   | TSP + VRP benchmarkés                               |
 | 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                              |
 | 4 — Web VRP      | À faire                                          | MVP flotte démontrable                              |
 | 5 — Trafic       | À faire                                          | Re-planification dynamique                          |
