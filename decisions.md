@@ -22,6 +22,48 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Ouvrir la Phase 1 malgré la Phase 0 non close
+
+**Contexte.** La consigne 1 de la feuille de route interdit d'ouvrir une phase
+tant que les critères d'acceptation de la précédente ne sont pas tous verts.
+Deux des cinq contrôles du smoke test restent rouges — mais pour une cause
+externe au projet : la politique réseau de l'environnement d'exécution refuse
+les deux serveurs de données. Aucun travail sur le dépôt ne peut les faire
+passer au vert.
+
+**Décision.** Ouvrir la Phase 1. Ce que la consigne 1 protège — ne pas bâtir
+sur des fondations non vérifiées — est préservé : le socle dont la Phase 1
+dépend réellement, PostgreSQL et PostGIS, est vérifié par exécution ; la
+chaîne OSRM l'est sur extrait synthétique. Le reliquat ne porte que sur la
+qualité des **données** d'Abidjan, pas sur le code.
+
+**Alternative écartée.** Attendre. Elle immobilise le projet sur une cause que
+le dépôt ne contrôle pas, sans réduire le moindre risque technique.
+
+**Conséquence et limite assumée.** Le critère d'acceptation de la Phase 1
+« obtenir la matrice OSRM » hérite du même blocage : il sera vérifié contre
+`infra/osrm/smoke-synthetic.osm`, et re-vérifié sur Abidjan dès la levée de la
+restriction. **La Phase 0 n'est pas déclarée close** ; elle reste ouverte dans
+`CLAUDE.md` jusqu'au passage du smoke test sur données réelles.
+
+---
+
+## 2026-10-18 — Rester sur la branche `claude/phase-0-execution-iyvf4a`
+
+**Contexte.** La feuille de route prévoit une branche par phase
+(`phase-1-backend-core`). Les consignes d'exécution de la session, elles,
+fixent `claude/phase-0-execution-iyvf4a` et interdisent de pousser ailleurs
+sans accord explicite du fondateur.
+
+**Décision.** Poursuivre sur la branche en cours. Un nom de branche
+légèrement inexact est sans conséquence et se corrige à tout moment ; pousser
+sur une branche non autorisée ne se défait pas aussi simplement.
+
+**Conséquence.** À rouvrir dès que le fondateur tranche — la convention de la
+feuille de route reprendra alors ses droits.
+
+---
+
 ## 2026-10-18 — Épingler `osrm/osrm-backend:v5.25.0`
 
 **Contexte.** Le tag `v5.27.1`, épinglé dans `docker-compose.yml` et
