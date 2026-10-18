@@ -22,6 +22,75 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — JWT sans Passport, et jetons de rafraîchissement à rotation
+
+**Contexte.** La feuille de route demande « JWT (access + refresh), bcrypt ».
+NestJS propose Passport comme chemin par défaut.
+
+**Décision.** `@nestjs/jwt` et un garde maison d'une soixantaine de lignes.
+Passport apporte une mécanique de _strategies_ utile pour OAuth ou les
+sessions — dont ce projet n'a besoin ni maintenant ni en Phase 6, le paiement
+passant par un webhook. La vérification cryptographique reste faite par la
+bibliothèque ; le garde ne lit qu'un en-tête.
+
+**Le garde est global, et les routes s'ouvrent explicitement** avec `@Public()`.
+L'inverse — ouvrir par défaut, penser à fermer — finit toujours par laisser une
+route exposée par oubli.
+
+**Rotation.** Chaque rafraîchissement révoque le jeton présenté et en émet un
+nouveau : un jeton volé puis rejoué après un usage légitime est refusé. Seul le
+SHA-256 du jeton est stocké, pour qu'une fuite de la table ne suffise pas à
+rejouer les sessions.
+
+**Temps constant à la connexion.** Un `bcrypt.compare` est exécuté même quand
+aucun utilisateur ne correspond, contre un haché factice calculé au démarrage.
+Sans cela, le temps de réponse distingue « numéro inconnu » de « mot de passe
+faux » et permet d'énumérer les comptes.
+
+**Bug trouvé et corrigé au passage.** Une inscription suivie d'une connexion
+dans la même seconde produisait deux jetons **identiques au bit près** —
+mêmes claims, même `iat`, dont la résolution est la seconde. L'insertion violait
+l'index unique, et surtout deux appareils auraient partagé un jeton :
+déconnecter l'un aurait déconnecté l'autre. Corrigé par un `jti` aléatoire.
+Trouvé par les tests e2e, invisible aux tests unitaires.
+
+---
+
+## 2026-10-18 — Séparer tests unitaires et tests de bout en bout
+
+**Contexte.** Les e2e Supertest exigent une base démarrée. Mélangés aux tests
+unitaires, ils rendraient `pnpm test` impossible à lancer sans infrastructure —
+et le travail de CI « qualité » n'en a pas.
+
+**Décision.** `pnpm test` reste sans dépendance externe et tourne partout ;
+`pnpm --filter @sira/api test:e2e` tourne dans le travail CI qui dispose déjà
+d'un service PostGIS. Les e2e s'exécutent en série : plusieurs fichiers
+écrivant dans la même base se marcheraient dessus, et un échec intermittent
+coûte plus cher que les secondes gagnées.
+
+**Conséquence.** Un contributeur sans Docker garde une boucle de test rapide,
+sans que la couverture e2e en pâtisse.
+
+---
+
+## 2026-10-18 — Longueur minimale plutôt que règle de composition
+
+**Contexte.** Choix de la contrainte sur les mots de passe à l'inscription.
+
+**Décision.** Huit caractères minimum, aucune exigence de majuscule ni de
+caractère spécial.
+
+**Pourquoi.** Les utilisateurs visés saisissent sur un clavier mobile, souvent
+en plein soleil, parfois avec des gants. Imposer une composition produit des
+mots de passe notés sur un papier dans la sacoche — une perte nette de
+sécurité. C'est la longueur qui compte, et le coût de hachage bcrypt (12 tours,
+~250 ms sur un petit VPS) fait le reste.
+
+**Conséquence.** La connexion, elle, n'impose aucune longueur : un compte créé
+avant un durcissement futur doit pouvoir continuer à se connecter.
+
+---
+
 ## 2026-10-18 — Construire `shared` et `tsp-core` en double ESM/CJS
 
 **Contexte.** `@sira/shared` n'exposait que ses sources TypeScript

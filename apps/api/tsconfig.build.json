@@ -6,5 +6,5 @@
     // aussi couvrir test/ et vitest.config.ts.
     "rootDir": "./src"
   },
-  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "vitest.config.ts"]
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "vitest*.config.ts"]
 }

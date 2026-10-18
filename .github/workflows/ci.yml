@@ -175,5 +175,10 @@ jobs:
       - name: Appliquer les migrations
         run: pnpm --filter @sira/api exec prisma migrate deploy
 
+      # Supertest contre une vraie base : parcours d inscription, connexion,
+      # rotation du jeton de rafraichissement et deconnexion.
+      - name: Tests de bout en bout (Supertest)
+        run: pnpm --filter @sira/api test:e2e
+
       - name: Demarrer l API compilee et l interroger
         run: bash apps/api/scripts/smoke.sh

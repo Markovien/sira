@@ -48,6 +48,21 @@ export default tseslint.config(
     },
   },
   {
+    // Supertest type `res.body` et `getHttpServer()` en `any`, par conception :
+    // une reponse HTTP n'a pas de type statique. Ecrire une interface par
+    // reponse dans les tests ajouterait du bruit sans rien verifier de plus —
+    // ce sont les assertions qui font foi. Les regles « unsafe » sont donc
+    // levees ici, et uniquement dans les tests.
+    files: ['apps/api/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+    },
+  },
+  {
     // Prisma genere des types dont les appels renvoient des unions larges ;
     // les regles « unsafe » de typescript-eslint produisent du bruit sans
     // valeur sur le code d'acces aux donnees.
