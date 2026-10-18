@@ -53,6 +53,13 @@ jobs:
       - name: Format (Prettier)
         run: pnpm format:check
 
+      # D abord, car tout ce qui suit en depend : ESLint est type-aware et les
+      # paquets partages ne se typent que via leur dist. C est aussi le seul
+      # chemin qui exerce ce que fait le binaire de production — un require()
+      # sur la sortie compilee, la ou Vitest resout vers les sources.
+      - name: Build
+        run: pnpm build
+
       - name: Lint (ESLint)
         run: pnpm lint
 
@@ -61,13 +68,6 @@ jobs:
 
       - name: Tests (Vitest)
         run: pnpm test
-
-      # Le typecheck ne voit pas ce que voit le binaire de production : Vitest
-      # resout les paquets de l atelier vers leurs sources TypeScript, le
-      # require() du build vers leur sortie compilee. C est ce second chemin
-      # qui a casse une fois sans qu aucune verification ne le signale.
-      - name: Build
-        run: pnpm build
 
   # --- 2. Jeu de donnees Abidjan --------------------------------------------
   donnees:

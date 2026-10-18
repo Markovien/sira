@@ -11,8 +11,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "// lint": "Construit d abord : ESLint est type-aware et les paquets partages ne se typent que via leur dist. Sans cela le lint passe en local (dist residuel) et echoue en CI (arbre propre).",
+    "lint": "turbo run build && eslint .",
+    "lint:fix": "turbo run build && eslint . --fix",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",

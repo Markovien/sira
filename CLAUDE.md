@@ -52,9 +52,16 @@ pnpm data:validate      # valide data/abidjan-stops.json contre le schéma Zod
 pnpm data:check         # vérifie que le JSON est bien la sortie du générateur
 ```
 
-Ces six commandes sont exactement celles que rejoue la CI. Avant de pousser,
-`pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm data:check`
-donne le même verdict en local.
+Ces commandes sont exactement celles que rejoue la CI. Avant de pousser, et
+**depuis un arbre nettoyé** (`rm -rf packages/*/dist apps/*/dist .turbo`) :
+
+```bash
+pnpm build && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm data:check
+```
+
+Le nettoyage n'est pas une précaution de principe : ESLint est _type-aware_ et
+les paquets partagés ne se typent que via leur `dist`. Un `dist` résiduel fait
+passer en local ce qui échoue en CI — c'est arrivé.
 
 ### Infrastructure locale
 

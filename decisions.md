@@ -22,6 +22,32 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Le lint construit d'abord (CI rouge, corrigée)
+
+**Contexte.** La CI du commit d'authentification est passée rouge sur l'étape
+ESLint, alors que `pnpm lint` passait en local. ESLint est _type-aware_, et
+depuis le passage des paquets partagés en double build, leurs types ne
+s'obtiennent plus que via `dist/`. Sans `dist`, les imports de `@sira/shared`
+deviennent « error typed » et les règles `no-unsafe-*` se déclenchent.
+
+**La cause exacte.** `pnpm lint` était `eslint .` à la racine : un appel direct
+qui court-circuite Turborepo. La dépendance `lint → ^build` déclarée dans
+`turbo.json` ne s'appliquait donc jamais. En local, un `dist` laissé par un
+build antérieur masquait le défaut ; sur un arbre propre, il apparaît.
+
+**Décision.** `pnpm lint` construit d'abord (`turbo run build && eslint .`) et
+l'étape Build passe avant Lint dans la CI. Une déclaration de dépendance que
+rien n'applique ne vaut rien : la commande doit porter l'ordre elle-même.
+
+**Leçon retenue, la seconde du même genre.** Vérifier dans un répertoire de
+travail qui traîne de l'état est une vérification incomplète. La première fois,
+c'était Vite qui résolvait vers les sources là où Node lit le compilé. Ici,
+c'est un `dist` résiduel. Désormais, toute vérification que j'annonce comme
+probante part d'un arbre nettoyé — `rm -rf */dist .turbo` avant la passe
+finale.
+
+---
+
 ## 2026-10-18 — JWT sans Passport, et jetons de rafraîchissement à rotation
 
 **Contexte.** La feuille de route demande « JWT (access + refresh), bcrypt ».
