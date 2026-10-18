@@ -11,12 +11,12 @@ remonter l'environnement pour le faire ?**
 
 ## En un coup d'œil
 
-|                    |                                                                     |
-| ------------------ | ------------------------------------------------------------------- |
-| **Branche**        | `claude/phase-0-execution-iyvf4a`                                   |
-| **Dernier commit** | `0601504` — orchestration de l'optimisation                         |
-| **Phase courante** | 2 terminée ; **la 3 est la prochaine**                              |
-| **Bloqué sur**     | rien côté code — deux points attendent le fondateur (voir plus bas) |
+|                     |                                                                     |
+| ------------------- | ------------------------------------------------------------------- |
+| **Branche**         | `claude/phase-0-execution-iyvf4a`                                   |
+| **Dernier travail** | orchestration de l'optimisation — `git log -1` pour le détail       |
+| **Phase courante**  | 2 terminée ; **la 3 est la prochaine**                              |
+| **Bloqué sur**      | rien côté code — deux points attendent le fondateur (voir plus bas) |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
