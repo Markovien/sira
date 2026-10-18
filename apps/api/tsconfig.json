@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // NestJS s'appuie sur la reflexion des decorateurs pour l'injection de
+    // dependances. Trois reglages du tsconfig de base doivent donc etre levés
+    // ici, et seulement ici (voir decisions.md) :
+    //  - verbatimModuleSyntax effacerait les imports de types utilises comme
+    //    types de parametres de constructeur, que emitDecoratorMetadata doit
+    //    justement pouvoir lire ;
+    //  - module ESNext : NestJS est stable en CommonJS, pas en ESM ;
+    //  - moduleResolution node : coherent avec CommonJS.
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "verbatimModuleSyntax": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "noEmit": true,
+
+    // Nest instancie les providers par reflexion : les champs sont affectes
+    // hors du constructeur dans certains cas.
+    "strictPropertyInitialization": false
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

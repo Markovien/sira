@@ -1,0 +1,289 @@
+// Schema SIRA — Phase 1, tache 1 de la feuille de route.
+//
+// Conventions :
+//  - identifiants : cuid, opaques et triables, jamais d'auto-increment expose ;
+//  - coordonnees : colonnes lat/lon en Float (source de verite, portable) plus
+//    une colonne PostGIS geography ajoutee par migration SQL pour les index
+//    spatiaux. Prisma ne type pas encore geography nativement ;
+//  - tout horodatage est en UTC ; l'affichage local est la responsabilite du
+//    client (Abidjan est en UTC+0, mais le multi-pays est prevu — cadrage §10.4).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pg_trgm, unaccent]
+}
+
+// --- Utilisateurs et organisations ------------------------------------------
+
+enum UserRole {
+  driver
+  dispatcher
+  admin
+}
+
+/// Un livreur independant est une organisation d'une personne : pas de cas
+/// particulier dans le modele, seulement un plan d'abonnement different.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  /// Code pays ISO 3166-1 alpha-2. Prepare le multi-pays (cadrage §10.4).
+  country   String   @default("CI") @db.Char(2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  vehicles  Vehicle[]
+  missions  Mission[]
+  depots    Depot[]
+  addresses Address[]
+
+  @@index([country])
+}
+
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Identifiant de connexion : le telephone, pas l'e-mail. En Cote d'Ivoire
+  /// le livreur a un numero mobile money, rarement une adresse e-mail.
+  /// Format E.164, unique au niveau global.
+  phone        String   @unique
+  passwordHash String
+  fullName     String
+  role         UserRole @default(driver)
+  isActive     Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  refreshTokens    RefreshToken[]
+  missionsAsDriver Mission[]      @relation("MissionDriver")
+
+  @@index([organizationId, role])
+}
+
+/// Jetons de rafraichissement stockes haches : une fuite de la base ne doit pas
+/// permettre d'usurper une session.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+// --- Flotte ------------------------------------------------------------------
+
+enum VehicleType {
+  moto
+  tricycle
+  voiture
+  camionnette
+  camion
+}
+
+model Vehicle {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  label String
+  type  VehicleType @default(moto)
+  /// Immatriculation : absente sur beaucoup de motos et tricycles.
+  plate String?
+
+  /// Capacites utilisees par le solveur VRP (Phase 2). Null = non contraint.
+  capacityKg     Float?
+  capacityVolume Float?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  missions Mission[]
+
+  @@index([organizationId, isActive])
+}
+
+/// Point de depart et de retour des tournees. Separe de Stop : un depot
+/// appartient a l'organisation et sert a de nombreuses missions.
+model Depot {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  label       String
+  addressText String
+  lat         Float
+  lon         Float
+  openFrom    String? @db.VarChar(5)
+  openUntil   String? @db.VarChar(5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  missionsFrom Mission[] @relation("MissionStartDepot")
+  missionsTo   Mission[] @relation("MissionEndDepot")
+
+  @@index([organizationId])
+}
+
+// --- Missions et arrets -------------------------------------------------------
+
+enum MissionStatus {
+  draft
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+model Mission {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  label  String?
+  /// Jour de la tournee, sans heure : une mission appartient a une journee.
+  date   DateTime      @db.Date
+  status MissionStatus @default(draft)
+
+  driverId  String?
+  driver    User?    @relation("MissionDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  startDepotId String?
+  startDepot   Depot?  @relation("MissionStartDepot", fields: [startDepotId], references: [id], onDelete: SetNull)
+  endDepotId   String?
+  endDepot     Depot?  @relation("MissionEndDepot", fields: [endDepotId], references: [id], onDelete: SetNull)
+
+  /// Resultats de la derniere optimisation (Phase 2). Null tant qu'elle
+  /// n'a pas tourne.
+  optimizedAt              DateTime?
+  estimatedDurationSeconds Int?
+  estimatedDistanceMeters  Int?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stops Stop[]
+
+  @@index([organizationId, date])
+  @@index([driverId, status])
+}
+
+enum StopStatus {
+  pending
+  delivered
+  failed
+  postponed
+}
+
+enum StopPriority {
+  normal
+  high
+}
+
+model Stop {
+  id        String  @id @default(cuid())
+  missionId String
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  label String
+  lat   Float
+  lon   Float
+
+  addressText         String
+  /// Le coeur du sujet : « en face de la station, portail bleu a cote du
+  /// maquis ». En Cote d'Ivoire l'adresse utile est un repere, pas un numero
+  /// de rue (cadrage §1.2).
+  informalDescription String?
+  landmark            String?
+  contactName         String?
+  contactPhone        String?
+
+  /// Fenetre horaire optionnelle, en heure locale HH:MM — contrainte du VRP.
+  timeWindowStart String? @db.VarChar(5)
+  timeWindowEnd   String? @db.VarChar(5)
+
+  loadKg         Float        @default(0)
+  volumeL        Float        @default(0)
+  serviceMinutes Int          @default(5)
+  priority       StopPriority @default(normal)
+
+  /// Rang dans la tournee, affecte par l'optimisation. Null avant.
+  sequence         Int?
+  estimatedArrival DateTime?
+
+  status        StopStatus @default(pending)
+  completedAt   DateTime?
+  /// Motif d'echec ou de report, saisi par le livreur.
+  failureReason String?
+
+  /// Preuve de livraison. La photo est stockee hors base ; seule la reference
+  /// est ici, pour ne pas gonfler les sauvegardes.
+  proofPhotoUrl     String?
+  proofSignatureUrl String?
+  proofCode         String?
+
+  /// Adresse de la base proprietaire a laquelle cet arret a ete rattache.
+  /// Chaque livraison confirmee alimente le moat (cadrage §10.1).
+  addressId String?
+  address   Address? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([missionId, sequence])
+  @@index([status])
+}
+
+// --- Base d'adresses proprietaire ---------------------------------------------
+
+/// L'actif strategique du projet (cadrage §10.1) : chaque livraison confirmee
+/// geocode une adresse informelle. Volontairement rattachee a une organisation
+/// mais interrogeable globalement — la mutualisation se decidera plus tard,
+/// avec le fondateur, car elle engage la confidentialite des clients.
+model Address {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  label               String
+  addressText         String
+  informalDescription String?
+  commune             String?
+  city                String  @default("Abidjan")
+  country             String  @default("CI") @db.Char(2)
+
+  lat Float
+  lon Float
+
+  /// Nombre de livraisons qui ont confirme ce point. Plus il est eleve, plus
+  /// la position est fiable : c'est le signal de qualite du geocodage.
+  confirmationCount Int      @default(1)
+  lastConfirmedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stops Stop[]
+
+  @@index([organizationId])
+  @@index([city, commune])
+}

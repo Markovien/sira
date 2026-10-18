@@ -22,6 +22,83 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Valider par Zod, pas par `class-validator`
+
+**Contexte.** Le `ValidationPipe` de NestJS exige `class-validator` et des DTO
+à décorateurs. Le dépôt valide déjà par Zod dans `@sira/shared`, schémas
+destinés à être partagés avec le mobile et le dashboard.
+
+**Décision.** Pas de `ValidationPipe` global ; un `ZodValidationPipe` appliqué
+par route avec le schéma partagé correspondant.
+
+**Alternative écartée.** Adopter `class-validator` pour suivre le chemin par
+défaut de NestJS : deux systèmes de validation, donc le format d'un numéro
+ivoirien ou les bornes d'une coordonnée écrits deux fois — et un jour
+divergents entre l'API et le mobile.
+
+**Conséquence.** Une règle métier s'écrit une fois et vaut partout. Coût : une
+vingtaine de lignes de pipe maison, et `new ZodValidationPipe(schema)` explicite
+à chaque route plutôt qu'un typage implicite.
+
+---
+
+## 2026-10-18 — `apps/api` en CommonJS, avec son propre tsconfig
+
+**Contexte.** NestJS résout ses dépendances par réflexion sur les métadonnées
+de décorateurs. Trois réglages du `tsconfig.base.json` l'en empêchent :
+`verbatimModuleSyntax` efface les imports de types utilisés comme types de
+paramètres de constructeur, et `module: ESNext` place NestJS hors de son
+chemin supporté.
+
+**Décision.** `apps/api/tsconfig.json` lève ces trois réglages, et seulement
+eux ; le reste du monorepo garde la configuration stricte. La règle ESLint
+`consistent-type-imports` est désactivée pour `apps/api/src/**` seulement.
+
+**Pourquoi cette précision.** Un `import type` mal placé ne casse ni le
+typecheck ni le lint : la métadonnée devient `Object` et l'injection échoue au
+**démarrage**. Le garde-fou doit donc être la configuration, pas la vigilance.
+
+**Conséquence.** Le mobile et les paquets partagés restent en ESM strict.
+
+---
+
+## 2026-10-18 — Tester NestJS avec Vitest plutôt que Jest
+
+**Contexte.** NestJS part sur Jest ; la convention du dépôt est Vitest. Vitest
+passe par esbuild, qui ne sait pas émettre les métadonnées de décorateurs.
+
+**Décision.** Vitest plus `unplugin-swc`, qui les émet.
+
+**Alternative écartée.** Jest pour `apps/api` : deux lanceurs de tests, deux
+configurations, deux comportements en CI, pour un paquet sur quatre.
+
+**Conséquence.** Une dépendance de développement supplémentaire, `@swc/core`,
+binaire natif — sans effet sur le mobile, qui n'en dépend pas. À rouvrir si
+l'attelage devient coûteux à maintenir.
+
+---
+
+## 2026-10-18 — Colonnes PostGIS générées plutôt qu'alimentées
+
+**Contexte.** `Stop`, `Depot` et `Address` ont besoin d'une colonne spatiale
+indexable. Prisma ne type pas `geography` nativement.
+
+**Décision.** Des colonnes `GENERATED ALWAYS AS (...) STORED` dérivées de
+`lat`/`lon`, ajoutées par migration SQL. `lat`/`lon` restent la source de
+vérité — c'est ce que lisent le mobile et le solveur TSP, sans PostGIS.
+
+**Alternative écartée.** Un trigger, ou une écriture par le code applicatif :
+les deux rendent possible une désynchronisation entre `lat`/`lon` et la
+géométrie, c'est-à-dire un routage juste sur une carte fausse.
+
+**Conséquence.** Vérifié par exécution : colonnes auto-remplies dans le bon
+ordre `lon`/`lat`, distance Plateau→Cocody à 3622 m — cohérente avec le test
+haversine de `@sira/shared` — et le planificateur utilise bien l'index GiST.
+Type `geography` et non `geometry` : les distances sortent en mètres sans
+projection à choisir, ce qui vaudra aussi pour le reste de l'UEMOA.
+
+---
+
 ## 2026-10-18 — Ouvrir la Phase 1 malgré la Phase 0 non close
 
 **Contexte.** La consigne 1 de la feuille de route interdit d'ouvrir une phase

@@ -74,6 +74,18 @@ silence. Toutes les variables ont un défaut, donc la stack démarre sans `.env`
 — `infra/check-env-example.sh` (rejoué en CI) garantit que ça reste vrai et
 que `.env.example` reste exhaustif.
 
+### API (Phase 1)
+
+```bash
+pnpm infra:up                               # PostgreSQL + PostGIS d'abord
+pnpm --filter @sira/api prisma:deploy       # applique les migrations
+pnpm --filter @sira/api dev                 # http://localhost:3000, doc sur /docs
+pnpm --filter @sira/api prisma:studio       # explorateur de base
+```
+
+Le client Prisma est généré par un `postinstall`, jamais commité. Détail du
+modèle de données et des choix : [`apps/api/README.md`](apps/api/README.md).
+
 ### Données de test
 
 ```bash
@@ -110,17 +122,20 @@ notion partagée entre deux applications y va, pas ailleurs.
 
 Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel prix.
 
-| Décision                                                                                       | Motif                                                                                                                           |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| OSRM en pipeline **MLD**, pas CH                                                               | Seul MLD permet de réinjecter les vitesses trafic (Phase 5) via un simple `osrm-customize`, sans retraiter l'extrait            |
-| Photon lancé depuis le **jar officiel** sur `eclipse-temurin`, index pré-construit GraphHopper | Évite une image Docker communautaire non auditée et un import Nominatim de plusieurs heures                                     |
-| Extrait Geofabrik nommé **`ivory-coast-latest.osm.pbf`**                                       | C'est le slug réel de Geofabrik ; la roadmap mentionne `cote-divoire` par commodité                                             |
-| Navigation **déléguée par deep link** à l'app GPS du téléphone                                 | Zéro coût d'API de navigation, zéro guidage vocal à maintenir                                                                   |
-| Coordonnées : toujours `{ lat, lon }` en interne                                               | OSRM attend `lon,lat` — passer **obligatoirement** par `toOsrmCoordinate()` de `@sira/shared`, l'inversion est le bug classique |
-| `node-linker=hoisted` dans `.npmrc`                                                            | Expo et les bindings natifs supportent mal les liens symboliques de pnpm                                                        |
-| Fins de ligne **LF** imposées par `.gitattributes`                                             | `data/abidjan-stops.json` est comparé octet par octet à la sortie du générateur Python, qui écrit du LF                         |
-| `pnpm infra:*` passe par `infra/compose.sh`                                                    | Force `--env-file` sur le `.env` de la racine, que Docker Compose ignorerait sinon (il ne regarde qu'à côté du compose)         |
-| `data/abidjan-stops.json` **exclu de Prettier**                                                | C'est un artefact généré ; le reformater casserait la comparaison de `pnpm data:check`                                          |
+| Décision                                                                                       | Motif                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OSRM en pipeline **MLD**, pas CH                                                               | Seul MLD permet de réinjecter les vitesses trafic (Phase 5) via un simple `osrm-customize`, sans retraiter l'extrait                             |
+| Photon lancé depuis le **jar officiel** sur `eclipse-temurin`, index pré-construit GraphHopper | Évite une image Docker communautaire non auditée et un import Nominatim de plusieurs heures                                                      |
+| Extrait Geofabrik nommé **`ivory-coast-latest.osm.pbf`**                                       | C'est le slug réel de Geofabrik ; la roadmap mentionne `cote-divoire` par commodité                                                              |
+| Navigation **déléguée par deep link** à l'app GPS du téléphone                                 | Zéro coût d'API de navigation, zéro guidage vocal à maintenir                                                                                    |
+| Coordonnées : toujours `{ lat, lon }` en interne                                               | OSRM attend `lon,lat` — passer **obligatoirement** par `toOsrmCoordinate()` de `@sira/shared`, l'inversion est le bug classique                  |
+| `node-linker=hoisted` dans `.npmrc`                                                            | Expo et les bindings natifs supportent mal les liens symboliques de pnpm                                                                         |
+| Fins de ligne **LF** imposées par `.gitattributes`                                             | `data/abidjan-stops.json` est comparé octet par octet à la sortie du générateur Python, qui écrit du LF                                          |
+| `pnpm infra:*` passe par `infra/compose.sh`                                                    | Force `--env-file` sur le `.env` de la racine, que Docker Compose ignorerait sinon (il ne regarde qu'à côté du compose)                          |
+| `data/abidjan-stops.json` **exclu de Prettier**                                                | C'est un artefact généré ; le reformater casserait la comparaison de `pnpm data:check`                                                           |
+| `apps/api` en **CommonJS**, avec son propre tsconfig                                           | NestJS lit les types des paramètres de constructeur à l'exécution ; `verbatimModuleSyntax` les effacerait et l'injection échouerait au démarrage |
+| Validation par **Zod**, pas `class-validator`                                                  | Une règle métier s'écrit une fois dans `@sira/shared` et vaut pour l'API, le mobile et le dashboard                                              |
+| Colonnes PostGIS **générées** depuis `lat`/`lon`                                               | Aucune désynchronisation possible entre coordonnées et géométrie ; `lat`/`lon` restent la source de vérité pour le mobile                        |
 
 ## Conventions
 
@@ -144,7 +159,7 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
 | Phase            | État                                             | Livrable                                            |
 | ---------------- | ------------------------------------------------ | --------------------------------------------------- |
 | 0 — Fondations   | Non close : smoke test infra bloqué (voir dette) | Monorepo, CI verte, docker-compose, dataset Abidjan |
-| 1 — Backend cœur | **En cours**                                     | API missions complète                               |
+| 1 — Backend cœur | **En cours** — socle + schéma Prisma posés       | API missions complète                               |
 | 2 — Optimisation | À faire                                          | TSP + VRP benchmarkés                               |
 | 3 — Mobile TSP   | À faire                                          | MVP livreur hors-ligne                              |
 | 4 — Web VRP      | À faire                                          | MVP flotte démontrable                              |
