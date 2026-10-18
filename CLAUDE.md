@@ -18,6 +18,9 @@ Documents de référence, à lire avant toute décision structurante :
 - [`decisions.md`](decisions.md) — journal des décisions : pourquoi chaque choix
   a été fait et ce qu'il coûte. **Toute décision structurante y est consignée
   avant d'être implémentée.**
+- [`REPRISE.md`](REPRISE.md) — **à lire en premier pour reprendre le travail** :
+  où en est la session, comment remonter l'environnement après un redémarrage,
+  et quelle est la prochaine étape.
 
 ## Règles non négociables
 

@@ -19,6 +19,7 @@ coverage/
 # Donnees volumineuses regenerables par infra/*/prepare.sh.
 # Elles pesent plusieurs Go et ne doivent jamais entrer dans l'historique.
 infra/osrm/data/
+infra/osrm/.synthetic/
 infra/photon/photon.jar
 infra/photon/photon_data/
 infra/photon/*.tar.bz2

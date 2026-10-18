@@ -111,6 +111,7 @@ jobs:
             infra/smoke-test.sh \
             infra/osrm/prepare.sh \
             infra/osrm/verify-pipeline.sh \
+            infra/osrm/run-synthetic.sh \
             infra/photon/prepare.sh \
             infra/check-env-example.sh \
             apps/api/scripts/smoke.sh \
