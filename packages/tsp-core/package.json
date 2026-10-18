@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "bench": "echo \"bench: implemente en Phase 2\" && exit 0"
+    "bench": "pnpm build && node bench.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

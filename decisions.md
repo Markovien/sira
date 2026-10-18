@@ -22,6 +22,44 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — TSP : descente locale plus redémarrages perturbés
+
+**Contexte.** Phase 2, tâche 1. Critère d'acceptation : écart ≤ 8 % de
+l'optimum sur berlin52, et 50 arrêts résolus en moins d'une seconde.
+
+**Ce que la descente seule donnait.** Plus proche voisin multi-départs, puis
+2-opt et Or-opt : la recherche s'arrête au premier optimum local, souvent en
+**une milliseconde**. Sur une instance à neuf points elle rendait 319 contre un
+optimum de 318 — et le budget de 800 ms restait inutilisé.
+
+**Décision.** Ajouter des redémarrages perturbés (recherche locale itérée). Une
+perturbation « double pont » coupe le tour en quatre et recolle les morceaux :
+2-opt ne sait pas la défaire, là où une simple inversion serait reconstituée
+aussitôt et ramènerait au même optimum local. Seul un tour strictement meilleur
+remplace le précédent, donc perturber ne peut jamais dégrader le résultat.
+
+**Effet mesuré.** berlin52 passe de 4,55 % à **0,00 %** d'écart au budget de
+800 ms : l'optimum exact, 7542. Le critère demandait 8 %.
+
+**Asymétrie assumée, mais bornée.** 2-opt inverse un segment, ce qui ne laisse
+son coût interne inchangé que si la matrice est symétrique — les matrices OSRM
+ne le sont pas tout à fait. Le delta suppose la symétrie, mais **aucun tour
+n'est conservé sur la foi d'un delta** : le coût exact est recalculé depuis la
+matrice après chaque mouvement accepté. À 100 points, 100 additions. L'erreur
+du delta ne peut donc pas se propager dans le résultat rendu.
+
+**Le test assert 3 %, pas 8 %.** Le solveur atteint l'optimum ; asserter le
+critère laisserait passer une régression de 0 à 7 % sans rien signaler. La
+marge couvre les machines de CI plus lentes, qui font moins de redémarrages.
+
+**Optimum jamais écrit en dur.** Il est recalculé depuis le tour optimal publié,
+et le test vérifie que ce calcul redonne 7542. Si l'un des deux fichiers était
+corrompu, l'écart se verrait immédiatement. Les deux fixtures sont commitées
+— moins de 2 Ko — plutôt que téléchargées : la CI ne doit dépendre d'aucun
+service externe.
+
+---
+
 ## 2026-10-18 — Mesurer la couverture sur unitaires et e2e ensemble
 
 **Contexte.** Critère d'acceptation de la Phase 1 : ≥ 70 % sur les services.
