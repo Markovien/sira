@@ -22,6 +22,39 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-18 — Client OSRM : POST partout, et erreurs traduites
+
+**Contexte.** La feuille de route décrit le module `routing` comme un client
+OSRM typé exposant un itinéraire et une matrice N×N.
+
+**POST pour les deux**, y compris l'itinéraire. Jusqu'à 100 points ne tiennent
+pas dans une URL, et surtout les coordonnées de livraison n'ont rien à faire
+dans les journaux d'accès d'un reverse proxy : ce sont les adresses des clients
+d'une entreprise.
+
+**Toutes les coordonnées passent par `toOsrmCoordinates`** de `@sira/shared`.
+OSRM attend `lon,lat` quand le reste du projet manipule `{ lat, lon }` ;
+l'inversion ne provoque aucune erreur, seulement un itinéraire plausible au
+mauvais endroit. Un test vérifie le chemin HTTP réellement émis, pas seulement
+la réponse — c'est le seul endroit où le bug serait visible.
+
+**Les codes d'erreur OSRM sont traduits**, parce que la distinction change qui
+doit agir : `NoRoute` et `NoSegment` deviennent des 422 avec un message
+actionnable pour le dispatcheur — une adresse mal placée, à corriger — là où un
+service injoignable devient un 503 qui relève de l'exploitation. Tout confondre
+en 500 enverrait le dispatcheur appeler le support pour une faute de saisie.
+
+**Les distances ne sont demandées que si utiles** : OSRM les calcule à part et
+la charge utile double. Le TSP n'a besoin que des durées.
+
+**Vérification.** Neuf tests unitaires contre un faux serveur HTTP local, sans
+bibliothèque de simulation. Puis la chaîne complète API → OSRM exercée contre
+un vrai serveur monté sur l'extrait synthétique : matrice 3×3 cohérente, et une
+coordonnée d'Accra refusée en 400 **avant** d'atteindre OSRM, par la borne
+Côte d'Ivoire de `coordinatesSchema`.
+
+---
+
 ## 2026-10-18 — Un import tolère les lignes fautives, l'API non
 
 **Contexte.** `POST /missions/:id/stops/import` reçoit des fichiers saisis à

@@ -125,3 +125,27 @@ export function validateTimeWindow(stop: {
   if (start >= end) return 'La fenetre horaire doit se terminer apres son debut';
   return null;
 }
+
+// --- Routage -----------------------------------------------------------------
+
+/**
+ * Requetes de routage. Les points sont valides par `coordinatesSchema`, donc
+ * bornes a la Cote d'Ivoire : une coordonnee hors zone est presque toujours un
+ * lat/lon inverse, et mieux vaut le dire que router vers le golfe de Guinee.
+ */
+export const routeRequestSchema = z.object({
+  points: z.array(coordinatesSchema).min(2, 'Au moins deux points sont requis'),
+  /** Trace encodee pour l'affichage carte. Inutile pour un simple calcul de duree. */
+  geometry: z.boolean().default(true),
+});
+
+export const tableRequestSchema = z.object({
+  points: z
+    .array(coordinatesSchema)
+    .min(2, 'Au moins deux points sont requis')
+    .max(100, 'Matrice limitee a 100 points'),
+  withDistances: z.boolean().default(false),
+});
+
+export type RouteRequest = z.infer<typeof routeRequestSchema>;
+export type TableRequest = z.infer<typeof tableRequestSchema>;
