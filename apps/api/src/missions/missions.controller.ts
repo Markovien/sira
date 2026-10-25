@@ -40,6 +40,11 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { MissionsService } from './missions.service';
 import { MAX_IMPORT_BYTES, StopsImportService } from './stops-import.service';
 
+/** Un livreur n'accede qu'a ses missions ; les autres roles a toute l'organisation. */
+function driverScope(user: AccessTokenPayload): string | undefined {
+  return user.role === 'driver' ? user.sub : undefined;
+}
+
 @ApiTags('missions')
 @ApiBearerAuth()
 @Controller('missions')
@@ -55,14 +60,14 @@ export class MissionsController {
     @CurrentUser() user: AccessTokenPayload,
     @Query(new ZodValidationPipe(listMissionsQuerySchema)) query: ListMissionsQuery,
   ) {
-    return this.missions.list(user.organizationId, query);
+    return this.missions.list(user.organizationId, query, driverScope(user));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Detail d une mission et de ses arrets, dans l ordre' })
   @ApiResponse({ status: 404, description: 'Mission introuvable dans cette organisation' })
   findOne(@CurrentUser() user: AccessTokenPayload, @Param('id') id: string) {
-    return this.missions.findOne(user.organizationId, id);
+    return this.missions.findOne(user.organizationId, id, driverScope(user));
   }
 
   // Un livreur execute sa tournee ; il ne la planifie pas.
@@ -120,7 +125,13 @@ export class MissionsController {
     @Param('stopId') stopId: string,
     @Body(new ZodValidationPipe(updateStopSchema)) dto: UpdateStopInput,
   ) {
-    return this.missions.updateStop(user.organizationId, missionId, stopId, dto);
+    return this.missions.updateStop(
+      user.organizationId,
+      missionId,
+      stopId,
+      dto,
+      driverScope(user),
+    );
   }
 
   @Roles('dispatcher', 'admin')

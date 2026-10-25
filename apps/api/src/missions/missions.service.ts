@@ -43,13 +43,19 @@ export class MissionsService {
     });
   }
 
-  async list(organizationId: string, query: ListMissionsQuery) {
+  /**
+   * `driverScope` : identifiant du livreur connecte, qui ne voit que ses
+   * missions (decisions.md, 25/10/2026). Il l'emporte sur le filtre `driverId`
+   * de la requete — un livreur ne peut pas demander celles d'un collegue.
+   */
+  async list(organizationId: string, query: ListMissionsQuery, driverScope?: string) {
+    const driverId = driverScope ?? query.driverId;
     const missions = await this.prisma.mission.findMany({
       where: {
         organizationId,
         ...(query.date ? { date: new Date(query.date) } : {}),
         ...(query.status ? { status: query.status } : {}),
-        ...(query.driverId ? { driverId: query.driverId } : {}),
+        ...(driverId ? { driverId } : {}),
       },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       // Une page de plus que demandee : sa presence dit s'il reste des
@@ -68,13 +74,13 @@ export class MissionsService {
     };
   }
 
-  async findOne(organizationId: string, id: string) {
+  async findOne(organizationId: string, id: string, driverScope?: string) {
     const mission = await this.prisma.mission.findFirst({
-      where: { id, organizationId },
+      where: { id, organizationId, ...(driverScope ? { driverId: driverScope } : {}) },
       include: { stops: { orderBy: [{ sequence: 'asc' }, { createdAt: 'asc' }] } },
     });
-    // 404 et non 403 quand la mission appartient a une autre organisation :
-    // repondre « interdit » confirmerait son existence.
+    // 404 et non 403 quand la mission appartient a une autre organisation, ou
+    // a un autre livreur : repondre « interdit » confirmerait son existence.
     if (!mission) throw new NotFoundException('Mission introuvable');
     return mission;
   }
@@ -136,8 +142,9 @@ export class MissionsService {
     missionId: string,
     stopId: string,
     input: UpdateStopInput,
+    driverScope?: string,
   ) {
-    await this.findOne(organizationId, missionId);
+    await this.findOne(organizationId, missionId, driverScope);
 
     const stop = await this.prisma.stop.findFirst({ where: { id: stopId, missionId } });
     if (!stop) throw new NotFoundException('Arret introuvable');
