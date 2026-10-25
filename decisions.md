@@ -22,6 +22,94 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-26 — Preuve de livraison : photo compressée et signature, gardées 30 jours sur le téléphone
+
+**Contexte.** Arbitrage du fondateur : la qualité de la photo n'est pas une
+contrainte ; elle doit rester lisible mais prendre le moins de place
+possible. Les preuves restent d'abord sur le téléphone du livreur ; un
+stockage serveur viendra au passage à l'échelle. Elles sont supprimées
+systématiquement au bout d'un mois, pour maîtriser l'espace.
+
+**Décision.**
+
+- **Prise de vue par l'appareil photo du système** (`expo-image-picker`), pas
+  par un module caméra embarqué : rien à ajouter à l'APK, et l'app photo du
+  téléphone gère déjà mise au point et flash.
+- **Compression** (`expo-image-manipulator`) : côté le plus long ramené à
+  800 px, JPEG qualité 0,5. Un bon de livraison ou une façade y restent
+  lisibles, pour 50 à 100 Ko par photo au lieu de 2 à 4 Mo.
+- **Signature** : tracé au doigt enregistré comme chemin SVG (texte de
+  quelques Ko, `react-native-svg`), pas comme image.
+- **Stockage** : fichiers dans le répertoire privé de l'app
+  (`expo-file-system`), référencés dans une table locale `proofs`. **Rien
+  n'est envoyé au serveur** à ce stade ; le serveur ne connaît que le statut
+  et l'heure de la livraison.
+- **Rétention de 30 jours** : à chaque ouverture de l'app, les preuves de plus
+  de 30 jours sont effacées, fichier et ligne. Aucune tâche de fond.
+
+**Conséquence.** Le dispatcheur ne voit pas encore les preuves (Phase 4) :
+c'est assumé jusqu'au stockage serveur. Un téléphone perdu emporte ses
+preuves. À 100 Ko par livraison et 40 livraisons par jour, un mois de preuves
+pèse environ 120 Mo.
+
+---
+
+## 2026-10-26 — Heure d'une livraison : celle du téléphone, corrigée et contrôlée
+
+**Contexte.** Arbitrage du fondateur : enregistrer l'heure du téléphone, qui
+est la seule à connaître le moment réel d'une livraison faite hors connexion,
+mais empêcher qu'un livreur triche en avançant ou en reculant son horloge, en
+s'appuyant si possible sur l'heure du réseau.
+
+**Décision.** Trois garde-fous, chacun simple :
+
+1. **Correction par l'heure du serveur.** Chaque requête du mobile porte son
+   heure courante (`X-Device-Time`). Le serveur en déduit le décalage de
+   l'horloge du téléphone au moment de l'envoi, et corrige l'heure déclarée
+   d'autant. Une horloge fausse mais restée fausse depuis la livraison est
+   ainsi neutralisée.
+2. **Bornes de vraisemblance.** L'heure corrigée ne peut pas être dans le
+   futur, ni antérieure au jour de la tournée, ni à la création de l'arrêt.
+   Hors bornes, elle est ramenée à la borne et la livraison est marquée
+   `timeSuspect`.
+3. **Horloge qui recule.** Le téléphone retient l'heure de sa dernière
+   saisie ; une saisie datée d'avant elle signale que l'horloge a été reculée
+   entre les deux. Elle est envoyée avec `clockWentBack`, et marquée
+   `timeSuspect`.
+
+Un écart de plus de 5 minutes entre l'horloge du téléphone et celle du
+serveur marque aussi la livraison : un téléphone à l'heure du réseau n'a
+aucune raison de dériver autant.
+
+Le serveur conserve l'heure déclarée brute (`reportedCompletedAt`) à côté de
+l'heure retenue (`completedAt`) : en cas de litige, on voit ce que le
+téléphone a dit et ce qui en a été déduit.
+
+**Limite assumée.** Un livreur qui recule son horloge, saisit, puis la remet à
+l'heure avant de se reconnecter, n'est détecté que si l'heure saisie sort des
+bornes ou précède une saisie antérieure. Fermer ce cas demanderait une horloge
+monotone matérielle (temps depuis le démarrage d'Android), donc un module
+natif : disproportionné pour le pilote. Le drapeau `timeSuspect` n'accuse
+personne : il signale une heure à vérifier au dispatcheur.
+
+---
+
+## 2026-10-26 — Build Android : Gradle en local, sans EAS
+
+**Contexte.** Arbitrage du fondateur sur la question ouverte le 25/10 : le
+build Gradle local est jugé le moins contraignant.
+
+**Décision.** `expo prebuild` génère le projet Android, Gradle l'assemble sur
+le poste de build. Aucun compte Expo, aucun envoi du code à un tiers, aucun
+quota. Le dossier `android/` généré n'est pas commité (`.gitignore`) : il se
+régénère depuis `app.json`.
+
+**Conséquence.** Le poste de build a besoin d'un JDK et du SDK Android. La
+clé de signature de l'APK reste sur ce poste, hors dépôt (`*.keystore` est
+déjà ignoré). La procédure sera écrite au lot 6, avec le build lui-même.
+
+---
+
 ## 2026-10-25 — La base locale appartient à un utilisateur
 
 **Contexte.** La base SQLite garde adresses, téléphones et descriptions des
