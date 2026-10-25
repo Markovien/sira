@@ -2,8 +2,9 @@
 
 Expo SDK 58, expo-router. Offline-first : optimisation TSP embarquée via
 `@sira/tsp-core`, navigation déléguée par deep link à l'app GPS du téléphone.
-Connexion persistante hors-ligne, liste et détail des missions. À venir (voir
-`REPRISE.md`) : SQLite et synchronisation, preuve de
+Connexion persistante, base SQLite et synchronisation, création de missions
+hors-ligne. À venir (voir
+`REPRISE.md`) : exécution de tournée et preuve de
 livraison, carte MapLibre hors-ligne.
 
 ## Organisation
