@@ -38,6 +38,7 @@ data/photon/
 __pycache__/
 *.py[cod]
 .venv/
+*.egg-info/
 venv/
 .pytest_cache/
 .ruff_cache/
