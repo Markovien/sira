@@ -22,6 +22,20 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-25 — La base locale appartient à un utilisateur
+
+**Contexte.** La base SQLite garde adresses, téléphones et descriptions des
+clients. Dans une flotte, un téléphone passe d'un livreur à l'autre. Mais une
+déconnexion qui effacerait tout perdrait aussi les saisies pas encore envoyées.
+
+**Décision.** La base retient l'identifiant de son propriétaire. À la
+connexion d'un autre utilisateur, elle est vidée avant tout affichage. Une
+déconnexion volontaire la vide aussi ; s'il reste des saisies non envoyées,
+l'app le dit et demande confirmation. Une session expirée, elle, ne vide rien :
+le même livreur se reconnecte et sa file part.
+
+---
+
 ## 2026-10-25 — Ajout d'arrêt hors connexion : historique local, position, recherche en ligne
 
 **Contexte.** Le critère d'acceptation demande de créer une mission de 15
