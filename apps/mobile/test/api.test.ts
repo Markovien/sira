@@ -238,3 +238,58 @@ describe('contrat', () => {
     await expect(api.login('0701020304', 'motdepasse')).rejects.toBeInstanceOf(NetworkError);
   });
 });
+
+describe('routingTable', () => {
+  const points = [
+    { lat: 5.32, lon: -4.02 },
+    { lat: 5.34, lon: -3.99 },
+  ];
+  const tableApi = (body: unknown) =>
+    createApiClient({
+      baseUrl: BASE,
+      fetch: fakeServer({
+        'POST /auth/refresh': () => json(200, { accessToken: 'a', refreshToken: 'r' }),
+        'POST /routing/table': () => json(200, body),
+      }).fetch,
+      store: memoryStore({ user, refreshToken: 'r1' }),
+    });
+
+  it('renvoie des matrices completes', async () => {
+    const table = {
+      durations: [
+        [0, 300],
+        [310, 0],
+      ],
+      distances: [
+        [0, 2500],
+        [2600, 0],
+      ],
+    };
+    await expect(tableApi(table).routingTable(points)).resolves.toEqual(table);
+  });
+
+  it('renvoie null si OSRM ne relie pas deux points', async () => {
+    const table = {
+      durations: [
+        [0, null],
+        [310, 0],
+      ],
+      distances: [
+        [0, null],
+        [2600, 0],
+      ],
+    };
+    await expect(tableApi(table).routingTable(points)).resolves.toBeNull();
+  });
+
+  it('renvoie null sans distances', async () => {
+    await expect(
+      tableApi({
+        durations: [
+          [0, 1],
+          [1, 0],
+        ],
+      }).routingTable(points),
+    ).resolves.toBeNull();
+  });
+});

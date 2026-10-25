@@ -82,6 +82,16 @@ export const missionListSchema = z.object({
 
 export const missionDetailSchema = missionSchema.extend({ stops: z.array(stopSchema) });
 
+/**
+ * Matrice OSRM. Une case `null` signale un couple de points qu'OSRM ne sait
+ * pas relier (point hors du reseau routier) : au client de decider du repli.
+ */
+const matrixSchema = z.array(z.array(z.number().nullable()));
+export const tableResponseSchema = z.object({
+  durations: matrixSchema,
+  distances: matrixSchema.optional(),
+});
+
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type TokenPair = z.infer<typeof tokenPairSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
@@ -90,3 +100,4 @@ export type Mission = z.infer<typeof missionSchema>;
 export type MissionSummary = z.output<typeof missionSummarySchema>;
 export type MissionList = z.output<typeof missionListSchema>;
 export type MissionDetail = z.infer<typeof missionDetailSchema>;
+export type TableResponse = z.infer<typeof tableResponseSchema>;

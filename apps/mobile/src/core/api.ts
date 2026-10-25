@@ -5,12 +5,19 @@ import {
   missionDetailSchema,
   missionListSchema,
   normalizeIvorianPhone,
+  stopSchema,
+  tableResponseSchema,
   tokenPairSchema,
   type AuthUser,
+  type Coordinates,
+  type CreateMissionInput,
+  type CreateStopInput,
+  type Stop,
   type MissionDetail,
   type MissionList,
 } from '@sira/shared';
 import { z, type ZodType } from 'zod';
+import type { RoutedMatrices } from './optimize';
 
 /**
  * Client de l'API pour l'app livreur. Session et transport sont injectes : en
@@ -86,7 +93,11 @@ interface RequestOptions {
   readonly method?: 'GET' | 'POST' | 'PATCH';
   readonly body?: unknown;
   readonly authenticated?: boolean;
+  readonly timeoutMs?: number;
 }
+
+/** Delai court : au-dela, l'estimation de repli vaut mieux qu'une attente. */
+const TABLE_TIMEOUT_MS = 5_000;
 
 export function createApiClient(options: ApiClientOptions) {
   const { store, onSessionExpired } = options;
@@ -100,7 +111,7 @@ export function createApiClient(options: ApiClientOptions) {
 
   async function send(path: string, init: RequestOptions, token: string | null) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), init.timeoutMs ?? timeoutMs);
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -232,6 +243,36 @@ export function createApiClient(options: ApiClientOptions) {
       }
       accessToken = null;
       await store.clear();
+    },
+
+    /** Le corps porte un `id` choisi par le client : le rejeu est idempotent. */
+    createMission(input: CreateMissionInput & { id: string }): Promise<MissionDetail> {
+      return request('/missions', missionDetailSchema, { method: 'POST', body: input });
+    },
+
+    addStop(missionId: string, input: CreateStopInput & { id: string }): Promise<Stop> {
+      return request(`/missions/${encodeURIComponent(missionId)}/stops`, stopSchema, {
+        method: 'POST',
+        body: input,
+      });
+    },
+
+    /**
+     * Matrices OSRM, ou `null` si elles sont incompletes : un couple de points
+     * non relie rendrait le solveur inutilisable (decisions.md, 25/10/2026).
+     */
+    async routingTable(points: readonly Coordinates[]): Promise<RoutedMatrices | null> {
+      const table = await request('/routing/table', tableResponseSchema, {
+        method: 'POST',
+        body: { points: points.map(({ lat, lon }) => ({ lat, lon })), withDistances: true },
+        timeoutMs: TABLE_TIMEOUT_MS,
+      });
+      const complete = (m: (number | null)[][] | undefined): m is number[][] =>
+        m !== undefined &&
+        m.length === points.length &&
+        m.every((row) => row.every((v) => v !== null));
+      if (!complete(table.durations) || !complete(table.distances)) return null;
+      return { durations: table.durations, distances: table.distances };
     },
 
     listMissions(): Promise<MissionList> {
