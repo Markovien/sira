@@ -245,10 +245,16 @@ model Stop {
   sequence         Int?
   estimatedArrival DateTime?
 
-  status        StopStatus @default(pending)
-  completedAt   DateTime?
+  status              StopStatus @default(pending)
+  /// Heure retenue : celle du telephone, corrigee de son decalage et bornee
+  /// (decisions.md, 26/10/2026).
+  completedAt         DateTime?
+  /// Heure brute declaree par le telephone, conservee pour les litiges.
+  reportedCompletedAt DateTime?
+  /// L'heure declaree a du etre corrigee ou semble manipulee : a verifier.
+  timeSuspect         Boolean    @default(false)
   /// Motif d'echec ou de report, saisi par le livreur.
-  failureReason String?
+  failureReason       String?
 
   /// Preuve de livraison. La photo est stockee hors base ; seule la reference
   /// est ici, pour ne pas gonfler les sauvegardes.

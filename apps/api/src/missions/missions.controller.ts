@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -37,6 +38,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { parseDeviceTime } from './completion-time';
 import { MissionsService } from './missions.service';
 import { MAX_IMPORT_BYTES, StopsImportService } from './stops-import.service';
 
@@ -124,14 +126,13 @@ export class MissionsController {
     @Param('id') missionId: string,
     @Param('stopId') stopId: string,
     @Body(new ZodValidationPipe(updateStopSchema)) dto: UpdateStopInput,
+    // Heure du telephone a l'envoi : corrige l'heure declaree de la livraison.
+    @Headers('x-device-time') deviceTime?: string,
   ) {
-    return this.missions.updateStop(
-      user.organizationId,
-      missionId,
-      stopId,
-      dto,
-      driverScope(user),
-    );
+    return this.missions.updateStop(user.organizationId, missionId, stopId, dto, {
+      driverScope: driverScope(user),
+      deviceNow: parseDeviceTime(deviceTime),
+    });
   }
 
   @Roles('dispatcher', 'admin')

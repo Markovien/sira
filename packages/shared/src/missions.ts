@@ -106,6 +106,14 @@ export const updateStopSchema = createStopSchema
     status: stopStatusSchema.optional(),
     failureReason: z.string().max(400).nullable().optional(),
     sequence: z.coerce.number().int().min(0).nullable().optional(),
+    /**
+     * Heure du changement de statut selon le telephone, qui seul la connait
+     * quand la saisie a ete faite hors connexion. Le serveur la corrige et la
+     * controle (decisions.md, 26/10/2026).
+     */
+    completedAt: z.string().datetime({ offset: true }).optional(),
+    /** Le telephone a constate que son horloge avait recule depuis sa saisie precedente. */
+    clockWentBack: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Aucun champ a modifier',

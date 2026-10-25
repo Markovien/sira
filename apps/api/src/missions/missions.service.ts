@@ -15,6 +15,7 @@ import type {
 } from '@sira/shared';
 import { validateTimeWindow } from '@sira/shared';
 import { AddressBookService } from '../geocoding/address-book.service';
+import { resolveCompletionTime } from './completion-time';
 import { PrismaService } from '../prisma/prisma.service';
 
 const STOPS_IN_ORDER = {
@@ -202,9 +203,9 @@ export class MissionsService {
     missionId: string,
     stopId: string,
     input: UpdateStopInput,
-    driverScope?: string,
+    context: { driverScope?: string | undefined; deviceNow?: Date | undefined } = {},
   ) {
-    await this.findOne(organizationId, missionId, driverScope);
+    const mission = await this.findOne(organizationId, missionId, context.driverScope);
 
     const stop = await this.prisma.stop.findFirst({ where: { id: stopId, missionId } });
     if (!stop) throw new NotFoundException('Arret introuvable');
@@ -220,6 +221,18 @@ export class MissionsService {
 
     const completesNow =
       input.status !== undefined && input.status !== 'pending' && stop.completedAt === null;
+    // L'heure du telephone, corrigee et bornee : seule a connaitre le moment
+    // d'une livraison faite hors connexion (decisions.md, 26/10/2026).
+    const reportedAt = input.completedAt ? new Date(input.completedAt) : undefined;
+    const completion = completesNow
+      ? resolveCompletionTime({
+          reportedAt,
+          deviceNow: context.deviceNow,
+          serverNow: new Date(),
+          notBefore: new Date(Math.max(mission.date.getTime(), stop.createdAt.getTime())),
+          clockWentBack: input.clockWentBack,
+        })
+      : null;
 
     const updated = await this.prisma.stop.update({
       where: { id: stopId },
@@ -228,7 +241,13 @@ export class MissionsService {
         ...(input.status !== undefined ? { status: input.status } : {}),
         ...(input.failureReason !== undefined ? { failureReason: input.failureReason } : {}),
         ...(input.sequence !== undefined ? { sequence: input.sequence } : {}),
-        ...(completesNow ? { completedAt: new Date() } : {}),
+        ...(completion
+          ? {
+              completedAt: completion.completedAt,
+              timeSuspect: completion.timeSuspect,
+              reportedCompletedAt: reportedAt ?? null,
+            }
+          : {}),
       },
     });
 
