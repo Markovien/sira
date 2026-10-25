@@ -1,28 +1,28 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Linking, StyleSheet, Text, View } from 'react-native';
-import { navigationLinks, openFirst } from '../../src/core/navigation';
+import type { Coordinates } from '@sira/shared';
 import {
   displayedStops,
   routeStopsOf,
   startPoint,
   type DisplayedStop,
-} from '../../src/core/mission-view';
-import { planRoute, type OnDeviceRoute } from '../../src/core/optimize';
+} from '../../../src/core/mission-view';
+import { navigationLinks, openFirst } from '../../../src/core/navigation';
+import { planRoute, type OnDeviceRoute, type RoutedMatrices } from '../../../src/core/optimize';
+import { useLocal } from '../../../src/data';
 import {
-  errorText,
   formatClock,
   formatDistance,
   formatDuration,
   formatMissionDate,
   t,
   type MessageKey,
-} from '../../src/i18n';
-import { currentPosition } from '../../src/platform/location';
-import { useSession } from '../../src/session';
-import { colors, spacing, typography } from '../../src/theme';
-import { Button, Centered, Loading, Message } from '../../src/ui';
-import { useRequest } from '../../src/use-request';
+} from '../../../src/i18n';
+import { currentPosition } from '../../../src/platform/location';
+import { useSession } from '../../../src/session';
+import { colors, spacing, typography } from '../../../src/theme';
+import { Button, Loading, Message } from '../../../src/ui';
 
 interface Plan {
   route: OnDeviceRoute;
@@ -32,25 +32,21 @@ interface Plan {
 
 export default function MissionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { api } = useSession();
-  const { data: mission, error, loading, reload } = useRequest(() => api.getMission(id));
+  const { api, state } = useSession();
+  const mission = useLocal((db) => db.getMission(id));
+  const pending = useLocal((db) => db.missionsWithPendingChanges());
   const [plan, setPlan] = useState<Plan | null>(null);
   const [optimizing, setOptimizing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (loading && !mission) return <Loading />;
-  if (!mission) {
-    return (
-      <Centered>
-        <Message text={error ? errorText(error) : t('error.unknown')} tone="danger" />
-        <Button label={t('home.retry')} onPress={() => void reload()} variant="secondary" />
-      </Centered>
-    );
-  }
+  if (mission === undefined) return <Loading />;
+  if (mission === null) return <Message text={t('error.unknown')} tone="danger" />;
 
   const title =
     mission.label ?? t('mission.untitled', { date: formatMissionDate(mission.date) });
   const remaining = routeStopsOf(mission.stops);
+  const canEdit =
+    state.status === 'signedIn' && state.user.role !== 'driver' && mission.status === 'draft';
 
   async function optimize() {
     setOptimizing(true);
@@ -59,12 +55,26 @@ export default function MissionScreen() {
     const start = startPoint(position, remaining);
     if (start) {
       const departure = new Date();
-      // Hors connexion pour l'instant : les matrices OSRM via l'API arriveront
-      // avec la synchronisation (lot 3).
-      const route = planRoute({ start, stops: remaining, departure });
+      const routed = await routedMatrices([start, ...remaining]);
+      const route = planRoute({
+        start,
+        stops: remaining,
+        departure,
+        ...(routed ? { routed } : {}),
+      });
       setPlan({ route, departure, fromPosition: position !== null });
     }
     setOptimizing(false);
+  }
+
+  /** Matrices OSRM si le reseau repond vite, sinon repli (decisions.md, 25/10/2026). */
+  async function routedMatrices(points: Coordinates[]): Promise<RoutedMatrices | null> {
+    if (points.length < 2) return null;
+    try {
+      return await api.routingTable(points);
+    } catch {
+      return null;
+    }
   }
 
   async function goTo({ stop }: DisplayedStop) {
@@ -82,17 +92,31 @@ export default function MissionScreen() {
         keyExtractor={({ stop }) => stop.id}
         ListHeaderComponent={
           <View style={styles.summary}>
+            {pending?.has(mission.id) && (
+              <Text style={styles.pending}>{t('mission.notSynced')}</Text>
+            )}
             {plan && <PlanSummary plan={plan} />}
             {notice && <Message text={notice} tone="danger" />}
-            {remaining.length > 0 ? (
+            {remaining.length > 0 && (
               <Button
                 label={t(optimizing ? 'mission.optimizing' : 'mission.optimize')}
                 onPress={() => void optimize()}
                 disabled={optimizing}
               />
-            ) : (
-              mission.stops.length === 0 && <Message text={t('mission.noStops')} />
             )}
+            {canEdit && (
+              <Button
+                label={t('mission.addStop')}
+                variant="secondary"
+                onPress={() =>
+                  router.push({
+                    pathname: '/missions/[id]/add-stop',
+                    params: { id: mission.id },
+                  })
+                }
+              />
+            )}
+            {mission.stops.length === 0 && <Message text={t('mission.noStops')} />}
           </View>
         }
         renderItem={({ item, index }) => (
@@ -117,9 +141,9 @@ function PlanSummary({ plan }: { plan: Plan }) {
       <Text style={styles.planNote}>
         {t(plan.fromPosition ? 'mission.startFromPosition' : 'mission.startFromFirstStop')}
       </Text>
-      {plan.route.source === 'fallback' && (
-        <Text style={styles.planNote}>{t('route.estimateOffline')}</Text>
-      )}
+      <Text style={styles.planNote}>
+        {t(plan.route.source === 'osrm' ? 'route.estimateRouted' : 'route.estimateOffline')}
+      </Text>
     </View>
   );
 }
@@ -157,6 +181,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: spacing.md },
   summary: { gap: spacing.md, marginBottom: spacing.md },
+  pending: { fontSize: typography.body, fontWeight: '600', color: colors.warning },
   planBox: {
     borderWidth: 2,
     borderColor: colors.border,

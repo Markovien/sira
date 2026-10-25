@@ -92,6 +92,23 @@ export const tableResponseSchema = z.object({
   distances: matrixSchema.optional(),
 });
 
+export const geocodeCandidateSchema = z.object({
+  label: z.string(),
+  lat: z.number(),
+  lon: z.number(),
+  source: z.enum(['photon', 'address-book']),
+  city: z.string().nullable(),
+  commune: z.string().nullable(),
+  /** Livraisons ayant confirme ce point ; absent pour Photon. */
+  confirmations: z.number().int().optional(),
+});
+
+export const geocodeSearchResponseSchema = z.object({
+  candidates: z.array(geocodeCandidateSchema),
+  /** false : geocodage degrade, a distinguer d'une absence de resultat. */
+  photonAvailable: z.boolean(),
+});
+
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type TokenPair = z.infer<typeof tokenPairSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
@@ -101,3 +118,5 @@ export type MissionSummary = z.output<typeof missionSummarySchema>;
 export type MissionList = z.output<typeof missionListSchema>;
 export type MissionDetail = z.infer<typeof missionDetailSchema>;
 export type TableResponse = z.infer<typeof tableResponseSchema>;
+export type GeocodeCandidate = z.infer<typeof geocodeCandidateSchema>;
+export type GeocodeSearchResponse = z.infer<typeof geocodeSearchResponseSchema>;

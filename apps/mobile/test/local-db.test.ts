@@ -146,3 +146,27 @@ describe('base locale', () => {
     expect(new Set(local?.stops.map((s) => s.label)).size).toBe(15);
   });
 });
+
+describe('appartenance', () => {
+  it('vide la base quand un autre utilisateur se connecte', async () => {
+    const db = await freshDb();
+    expect(await db.claimFor('livreur-1')).toBe(false);
+    await db.createMission({ id: M1, date: '2026-11-04' }, NOW);
+    expect(await db.claimFor('livreur-1')).toBe(false);
+    expect(await db.listMissions()).toHaveLength(1);
+
+    expect(await db.claimFor('livreur-2')).toBe(true);
+    expect(await db.listMissions()).toHaveLength(0);
+    expect(await db.syncCounts()).toEqual({ pending: 0, rejected: 0 });
+  });
+
+  it('ne garde rien apres une deconnexion volontaire', async () => {
+    const db = await freshDb();
+    await db.claimFor('livreur-1');
+    await db.createMission({ id: M1, date: '2026-11-04' }, NOW);
+    await db.reset();
+    expect(await db.listMissions()).toHaveLength(0);
+    // Plus de proprietaire : le suivant, quel qu'il soit, part d'une base vide.
+    expect(await db.getMeta('owner')).toBeNull();
+  });
+});

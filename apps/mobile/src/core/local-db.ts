@@ -165,6 +165,12 @@ export function createLocalDb(driver: SqlDriver) {
     );
   }
 
+  async function wipe() {
+    for (const table of ['stops', 'missions', 'outbox', 'rejected', 'meta']) {
+      await driver.run(`DELETE FROM ${table}`);
+    }
+  }
+
   return {
     async migrate(): Promise<void> {
       await exclusive(async () => {
@@ -440,6 +446,31 @@ export function createLocalDb(driver: SqlDriver) {
           for (const [position, stop] of stops.entries()) await writeStop(stop, position);
         }
       });
+    },
+
+    // --- Appartenance (decisions.md, 25/10/2026) -----------------------------
+
+    /**
+     * Rattache la base a l'utilisateur connecte. Si elle appartenait a un autre,
+     * elle est videe d'abord : un livreur ne doit jamais voir les clients du
+     * precedent. Renvoie true si un effacement a eu lieu.
+     */
+    claimFor(userId: string): Promise<boolean> {
+      return transaction(async () => {
+        const [row] = await driver.all<{ value: string }>(
+          "SELECT value FROM meta WHERE key = 'owner'",
+        );
+        if (row?.value === userId) return false;
+        const wiped = row !== undefined;
+        await wipe();
+        await driver.run("INSERT INTO meta (key, value) VALUES ('owner', ?)", [userId]);
+        return wiped;
+      });
+    },
+
+    /** Deconnexion volontaire : plus rien ne reste sur le telephone. */
+    reset(): Promise<void> {
+      return transaction(wipe);
     },
 
     getMeta(key: string): Promise<string | null> {

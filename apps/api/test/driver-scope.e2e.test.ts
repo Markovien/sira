@@ -1,5 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
-import { authResponseSchema, missionDetailSchema, missionListSchema } from '@sira/shared';
+import {
+  authResponseSchema,
+  geocodeSearchResponseSchema,
+  missionDetailSchema,
+  missionListSchema,
+  tableResponseSchema,
+} from '@sira/shared';
 import { Test } from '@nestjs/testing';
 import { hash } from 'bcrypt';
 import request from 'supertest';
@@ -154,5 +160,29 @@ describe('Contrat des reponses avec @sira/shared', () => {
     const parsed = missionDetailSchema.safeParse(detail.body);
     expect(parsed.error).toBeUndefined();
     expect(parsed.data?.stops).toHaveLength(1);
+  });
+
+  it('matrice de routage', async () => {
+    // Points de l'extrait OSRM synthetique, demarre pour les e2e.
+    const res = await request(app.getHttpServer())
+      .post('/routing/table')
+      .set(auth(driver1Token))
+      .send({
+        points: [
+          { lat: 5.3251, lon: -4.0212 },
+          { lat: 5.3457, lon: -3.9958 },
+        ],
+        withDistances: true,
+      });
+    expect(res.status).toBe(200);
+    expect(tableResponseSchema.safeParse(res.body).error).toBeUndefined();
+  });
+
+  it('recherche d adresse', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/geocoding/search')
+      .query({ q: 'pharmacie' })
+      .set(auth(driver1Token));
+    expect(geocodeSearchResponseSchema.safeParse(res.body).error).toBeUndefined();
   });
 });

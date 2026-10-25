@@ -1,6 +1,7 @@
 import {
   authResponseSchema,
   authUserSchema,
+  geocodeSearchResponseSchema,
   loginSchema,
   missionDetailSchema,
   missionListSchema,
@@ -12,6 +13,7 @@ import {
   type Coordinates,
   type CreateMissionInput,
   type CreateStopInput,
+  type GeocodeSearchResponse,
   type Stop,
   type MissionDetail,
   type MissionList,
@@ -273,6 +275,13 @@ export function createApiClient(options: ApiClientOptions) {
         m.every((row) => row.every((v) => v !== null));
       if (!complete(table.durations) || !complete(table.distances)) return null;
       return { durations: table.durations, distances: table.distances };
+    },
+
+    searchAddresses(query: string): Promise<GeocodeSearchResponse> {
+      const params = new URLSearchParams({ q: query, limit: '5' });
+      return request(`/geocoding/search?${params.toString()}`, geocodeSearchResponseSchema, {
+        timeoutMs: TABLE_TIMEOUT_MS,
+      });
     },
 
     listMissions(): Promise<MissionList> {
