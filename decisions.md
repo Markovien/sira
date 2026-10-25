@@ -68,7 +68,7 @@ le livreur a téléchargé la carte — c'est pourquoi Waze n'est jamais le déf
 sans OSRM (roadmap 3.4). Les vitesses de repli et le facteur de détour existent
 déjà dans `@sira/shared/domain.ts`.
 
-**Décision.** `fallbackDurationMatrix(points, departure)` vit dans
+**Décision.** `fallbackMatrices(points, departure)` vit dans
 `@sira/shared` : distance haversine × 1,35, divisée par la vitesse de la
 tranche horaire du **départ**, appliquée à toute la tournée. L'API pourra s'en
 servir le jour où OSRM tombe. La tranche se déduit d'un jour et d'une heure
