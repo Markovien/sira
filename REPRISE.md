@@ -11,23 +11,23 @@ remonter l'environnement pour le faire ?**
 
 ## En un coup d'œil
 
-|                    |                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------- |
-| **Branche**        | `claude/phase-0-execution-iyvf4a`                                               |
-| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche         |
-| **Phase courante** | **3 en cours** — lots 1 à 3 livrés ; le 4 (exécution de tournée) est le suivant |
-| **Bloqué sur**     | rien côté code — deux points attendent le fondateur (voir plus bas)             |
+|                    |                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------- |
+| **Branche**        | `claude/phase-0-execution-iyvf4a`                                                 |
+| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche           |
+| **Phase courante** | **3 en cours** — lots 1 à 4 livrés ; restent la carte (5) et le build Android (6) |
+| **Bloqué sur**     | rien côté code — un point attend le fondateur (réseau Geofabrik)                  |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
 | 0 — Fondations     | Complète **sauf** le smoke test infra, bloqué par le réseau         |
 | 1 — Backend cœur   | ✅ 16 routes, couverture 94 %                                       |
 | 2 — Optimisation   | ✅ TSP 0 % d'écart sur berlin52, VRP 0,01 % sur C101, orchestration |
-| **3 — Mobile TSP** | **en cours** : lots 1 à 3 sur 6 livrés                              |
+| **3 — Mobile TSP** | **en cours** : lots 1 à 4 sur 6 livrés                              |
 | 4 à 7              | à faire                                                             |
 
-**239 tests**, tous verts : 51 dans `@sira/shared`, 12 dans `tsp-core`, 93
-côté API (31 unitaires et 62 de bout en bout), 16 sur le solveur VRP, 67 sur
+**261 tests**, tous verts : 51 dans `@sira/shared`, 12 dans `tsp-core`, 107
+côté API (39 unitaires et 68 de bout en bout), 16 sur le solveur VRP, 75 sur
 la logique mobile.
 Couverture 94 % sur les services de l'API, seuil de 70 % appliqué en CI.
 
@@ -147,7 +147,7 @@ Deux pièges déjà rencontrés, qui ne se voient que là :
 - **Un test ignoré ressemble à un test réussi** : vérifier qu'aucun `↓`
   n'apparaît dans le rapport.
 
-## Prochaine étape : Phase 3, lot 4
+## Prochaine étape : Phase 3, lot 6 (ou 5)
 
 La Phase 3 est découpée en lots, chacun livré vert et poussé :
 
@@ -156,18 +156,24 @@ La Phase 3 est découpée en lots, chacun livré vert et poussé :
 | 1   | Squelette Expo, thème, i18n ; matrice hors-ligne (`@sira/shared`) ; `planRoute` ; deep links    | ✅ livré    |
 | 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions    | ✅ livré    |
 | 3   | SQLite locale, file de synchronisation, création de mission hors-ligne, matrices OSRM via l'API | ✅ livré    |
-| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap       | **suivant** |
-| 5   | Carte MapLibre hors-ligne (PMTiles) — dépend d'un extrait OSM, donc du réseau                   | à faire     |
-| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours, build Android                                      | à faire     |
+| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap       | ✅ livré    |
+| 5   | Carte MapLibre hors-ligne (PMTiles) — voir ci-dessous pour la source des tuiles                 | à faire     |
+| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours, build Android Gradle local                         | **suivant** |
 
-Pour le lot 4, deux points à trancher dans `decisions.md` avant de coder :
+Ordre conseillé : **6 avant 5**, parce que le 6 ne dépend de rien et que le
+5 dépend d'une source de tuiles à valider. Vérifié le 26/10/2026 :
 
-- **l'heure d'une livraison** : rejouée des heures plus tard, une mise à jour
-  de statut reçoit aujourd'hui `completedAt = now()` côté serveur. Il faut
-  transmettre l'heure du téléphone (chaque entrée de file porte déjà son `createdAt`),
-  et décider de la règle en cas de conflit avec une modification serveur ;
-- **la preuve de livraison** : stockage des photos (où, quelle taille, quelle
-  compression) — c'est la première donnée lourde du projet.
+- **Build Android (lot 6)** — faisable ici : `dl.google.com` (SDK Android),
+  `services.gradle.org`, `maven.google.com` et Maven Central répondent, Java et
+  Gradle sont installés, `ANDROID_HOME` est vide (SDK à installer).
+  Arbitrage du fondateur : **Gradle local, sans EAS** (`decisions.md`,
+  26/10/2026). `expo prebuild` puis `./gradlew assembleRelease` ; mesurer
+  l'APK contre le budget de 60 Mo.
+- **Carte (lot 5)** — `download.geofabrik.de` reste refusé, mais
+  `build.protomaps.com` répond. Piste à instruire avant toute décision :
+  `pmtiles extract` sur un planet Protomaps, qui ne télécharge par requêtes
+  de plage que l'emprise de la Côte d'Ivoire. Vérifier la licence (ODbL), le
+  poids de l'extrait et la compatibilité MapLibre RN avec le SDK 58.
 
 Ce qui est en place et à réutiliser :
 
@@ -198,6 +204,14 @@ Ce qui est en place et à réutiliser :
   est `admin` de son organisation, l'app n'affiche le bouton qu'à eux.
 - `src/core` ne doit **jamais** importer `react-native` — c'est ce qui le rend
   testable sous Vitest. Stockage et réseau y entrent par interfaces.
+- **Saisie de terrain** : `db.recordOutcome()` (statut horodaté, détection
+  d'horloge reculée) ; l'API corrige et contrôle l'heure
+  (`apps/api/src/missions/completion-time.ts`, fonction pure testée).
+  Chaque requête porte `X-Device-Time`.
+- **Preuves** : `src/platform/proof-files.ts` (photo 800 px, JPEG 0,5, dans le
+  répertoire privé), table locale `proofs`, `purgeProofs()` à l'ouverture
+  (30 jours, et fichiers orphelins). **Rien n'est envoyé au serveur** : c'est
+  l'arbitrage du fondateur jusqu'au passage à l'échelle.
 
 Points d'attention :
 
@@ -212,8 +226,12 @@ Points d'attention :
   l'export), `network` (événements `online`/`offline`) et `location`
   (`navigator.geolocation`). Puis `expo export --platform web` et Playwright.
   L'API n'ayant pas de CORS, intercepter ses appels avec `page.route` — c'est
-  aussi là qu'on simule le mode avion. Tout retirer avant de commiter. Les
-  lots 2 et 3 ont été vérifiés ainsi, critère d'acceptation compris.
+  aussi là qu'on simule le mode avion. Pour le lot 4, une doublure
+  `proof-files.web.ts` remplace l'appareil photo par une image fixe. Tout
+  retirer avant de commiter. Les lots 2 à 4 ont été vérifiés ainsi, critère
+  d'acceptation compris.
+- **Python** : `pytest` peut pointer vers un autre interpréteur que
+  `python` ; lancer `python -m pytest -q` dans `services/vrp-solver`.
 - `@sira/tsp-core` doit rester du TypeScript pur, sans API Node.
 - Les schémas Zod de `@sira/shared` sont partagés : ne pas réécrire les règles
   de validation côté mobile.
@@ -242,15 +260,14 @@ un niveau d'accès plus large, soit ce domaine sous « Allowed domains »
 en gardant cochée la case des gestionnaires de paquets. Documentation :
 <https://code.claude.com/docs/en/cloud-environments#network-access>
 
-**2. Le build Android : EAS ou Gradle local ?** Le critère d'acceptation de
-la Phase 3 cite EAS Build, service Expo gratuit sous un quota de builds puis
-payant, qui demande un compte et l'envoi du code. Rien n'est configuré tant que
-ce n'est pas tranché (`decisions.md`, 25/10/2026). L'alternative sans tiers —
-`expo prebuild` puis Gradle — demande un SDK Android sur le poste de build.
+_Déjà tranché, rien à redemander :_
 
-_Déjà tranché, rien à redemander :_ la base d'adresses reste **cloisonnée par
-organisation** (18/10/2026, pour la sécurité). `organizationId` est obligatoire
-en base et la suppression d'une organisation emporte ses adresses.
+- la base d'adresses reste **cloisonnée par organisation** (18/10/2026) ;
+- **build Android en Gradle local**, sans EAS (26/10/2026) ;
+- **heure de livraison** : celle du téléphone, corrigée par l'heure du serveur
+  et contrôlée contre la triche (26/10/2026) ;
+- **preuves** : compressées, gardées 30 jours sur le téléphone, rien sur un
+  serveur avant le passage à l'échelle (26/10/2026).
 
 ---
 
@@ -264,6 +281,10 @@ en base et la suppression d'une organisation emporte ses adresses.
 - Les messages d'erreur de l'API sont en ASCII (« Numero ou mot de passe
   incorrect ») et le mobile les affiche tels quels. À accentuer côté API —
   ce sont des chaînes destinées à l'utilisateur.
+- Le dispatcheur ne voit pas encore `timeSuspect` ni les preuves : ce sera
+  l'affaire du dashboard (Phase 4), et du stockage serveur pour les preuves.
+- Une mission ne passe pas d'elle-même `in_progress` quand le premier arrêt
+  est traité, ni `completed` au dernier : à décider avec la Phase 4.
 - `planRoute` n'est déterministe que si la recherche converge avant son budget
   de temps : vérifié à 15 arrêts, 8 fois sur 10 à 20. Au-delà, deux appuis
   peuvent donner deux ordres de coût voisin. Remède le jour où cela gêne : un
