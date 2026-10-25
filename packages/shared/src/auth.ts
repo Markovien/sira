@@ -52,3 +52,18 @@ export interface AccessTokenPayload {
   organizationId: string;
   role: (typeof USER_ROLES)[number];
 }
+
+/**
+ * Ramene un numero saisi a la main au format E.164 attendu par `phoneSchema`.
+ * Un livreur ecrit « 07 01 02 03 04 », « 0701020304 » ou « +225 07... » :
+ * tous designent le meme numero. Ce qui ne ressemble a aucune de ces formes
+ * est renvoye tel quel, debarrasse des espaces, pour que le schema le refuse
+ * avec son message plutot que d'etre « corrige » en un autre numero.
+ */
+export function normalizeIvorianPhone(input: string): string {
+  const compact = input.replace(/[\s.\-()]/g, '');
+  if (/^\d{10}$/.test(compact)) return `+225${compact}`;
+  if (/^225\d{10}$/.test(compact)) return `+${compact}`;
+  if (/^00225\d{10}$/.test(compact)) return `+${compact.slice(2)}`;
+  return compact;
+}

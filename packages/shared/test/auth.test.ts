@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { loginSchema, passwordSchema, registerSchema } from '../src/auth.js';
+import {
+  loginSchema,
+  normalizeIvorianPhone,
+  passwordSchema,
+  registerSchema,
+} from '../src/auth.js';
+import { phoneSchema } from '../src/schemas.js';
 
 const valid = {
   phone: '+2250701020304',
@@ -42,5 +48,24 @@ describe('loginSchema', () => {
     expect(loginSchema.safeParse({ phone: '+2250701020304', password: 'x' }).success).toBe(
       true,
     );
+  });
+});
+
+describe('normalizeIvorianPhone', () => {
+  it.each([
+    ['07 01 02 03 04', '+2250701020304'],
+    ['0701020304', '+2250701020304'],
+    ['+225 07 01 02 03 04', '+2250701020304'],
+    ['225-07-01-02-03-04', '+2250701020304'],
+    ['002250701020304', '+2250701020304'],
+    ['+2250701020304', '+2250701020304'],
+  ])('%s -> %s', (input, expected) => {
+    expect(normalizeIvorianPhone(input)).toBe(expected);
+    expect(phoneSchema.safeParse(normalizeIvorianPhone(input)).success).toBe(true);
+  });
+
+  it('ne fabrique pas un numero a partir d une saisie trop courte', () => {
+    // Ancien format a 8 chiffres : il faut le refuser, pas le completer.
+    expect(phoneSchema.safeParse(normalizeIvorianPhone('01 02 03 04')).success).toBe(false);
   });
 });

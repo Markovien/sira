@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import { authResponseSchema, missionDetailSchema, missionListSchema } from '@sira/shared';
 import { Test } from '@nestjs/testing';
 import { hash } from 'bcrypt';
 import request from 'supertest';
@@ -7,7 +8,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 /**
- * Un livreur ne voit et ne modifie que ses propres missions
+ * Le parcours de l'app livreur : connexion, liste, detail. Un livreur ne voit et ne modifie que ses propres missions
  * (decisions.md, 25/10/2026). Exige PostgreSQL demarre et migrations appliquees.
  */
 
@@ -131,5 +132,27 @@ describe('Cloisonnement par livreur', () => {
     const res = await request(app.getHttpServer()).get('/missions').set(auth(adminToken));
     const ids = res.body.missions.map((m: { id: string }) => m.id);
     expect(ids).toEqual(expect.arrayContaining([missionOf1, missionOf2]));
+  });
+});
+
+// Le mobile valide chaque reponse avec ces schemas : un ecart ici serait une
+// app qui refuse ses propres donnees.
+describe('Contrat des reponses avec @sira/shared', () => {
+  it('connexion', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ phone: DRIVER_1, password: PASSWORD });
+    expect(authResponseSchema.safeParse(res.body).error).toBeUndefined();
+  });
+
+  it('liste et detail', async () => {
+    const list = await request(app.getHttpServer()).get('/missions').set(auth(adminToken));
+    expect(missionListSchema.safeParse(list.body).error).toBeUndefined();
+    const detail = await request(app.getHttpServer())
+      .get(`/missions/${missionOf2}`)
+      .set(auth(adminToken));
+    const parsed = missionDetailSchema.safeParse(detail.body);
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.data?.stops).toHaveLength(1);
   });
 });
