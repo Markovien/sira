@@ -198,21 +198,23 @@ Points d'attention :
 
 ## Ce qui attend le fondateur
 
-**1. L'autorisation réseau, qui clôt la Phase 0.**
-`download.geofabrik.de` et `download1.graphhopper.com` sont refusés par la
-politique d'egress (403 au CONNECT), re-testé plusieurs fois — dernière fois
-le 25/10/2026, toujours refusé. Sans eux, ni
-extrait OSM d'Abidjan ni index de géocodage. Probablement une **nouvelle
-session** à ouvrir pour que le réglage prenne effet. Ensuite :
+**1. L'autorisation réseau pour Geofabrik, qui clôt la Phase 0.**
+`download1.graphhopper.com` est **ouvert** depuis le 25/10/2026 : Photon tourne
+sur l'index réel et son contrôle du smoke test est vert.
+`download.geofabrik.de` reste refusé — le tunnel s'établit puis l'egress le
+ferme à chaque essai (`ws_closed_mid_exchange` dans
+`$HTTPS_PROXY/__agentproxy/status`). Sans lui, pas d'extrait OSM d'Abidjan, et
+les deux contrôles OSRM restent rouges. Une fois le domaine autorisé
+(probablement dans une **nouvelle session**) :
 
 ```bash
-bash infra/osrm/prepare.sh && bash infra/photon/prepare.sh
+bash infra/osrm/prepare.sh            # Photon est deja prepare s'il reste infra/photon/photon_data
 pnpm infra:up && pnpm infra:smoke
 ```
 
 Le remède est dans les réglages de l'environnement cloud : menu de
 l'environnement dans la barre de titre, puis **Edit → Network access** — soit
-un niveau d'accès plus large, soit ces deux domaines sous « Allowed domains »
+un niveau d'accès plus large, soit ce domaine sous « Allowed domains »
 en gardant cochée la case des gestionnaires de paquets. Documentation :
 <https://code.claude.com/docs/en/cloud-environments#network-access>
 
@@ -235,7 +237,6 @@ en base et la suppression d'une organisation emporte ses adresses.
   à brancher quand le reporting de la Phase 4 en aura besoin.
 - Instance Solomon **R101** introuvable depuis une source accessible ; la
   couverture VRP s'appuie sur C101 plus le critère Abidjan.
-- URL de l'index GraphHopper : le seul élément d'infrastructure jamais atteint.
 - Les messages d'erreur de l'API sont en ASCII (« Numero ou mot de passe
   incorrect ») et le mobile les affiche tels quels. À accentuer côté API —
   ce sont des chaînes destinées à l'utilisateur.

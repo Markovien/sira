@@ -78,7 +78,7 @@ passer en local ce qui échoue en CI — c'est arrivé.
 
 ```bash
 bash infra/osrm/prepare.sh      # une fois : extrait OSM CI + pipeline MLD (~15 min, ~2 Go)
-bash infra/photon/prepare.sh    # une fois : jar Photon + index de géocodage CI (~5 min, ~1 Go)
+bash infra/photon/prepare.sh    # une fois : jar Photon + index de géocodage CI (~1 min, ~150 Mo)
 pnpm infra:up                   # démarre postgres+postgis, osrm, photon
 pnpm infra:smoke                # vérifie les critères d'acceptation de la Phase 0
 pnpm infra:logs                 # suit les logs des conteneurs
@@ -209,20 +209,20 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
   d'init crée `postgis`, `postgis_topology`, `pg_trgm` et `unaccent` ; la
   chaîne OSRM (image, pipeline MLD, `/route`, `/table`) est validée par
   `infra/osrm/verify-pipeline.sh` ; Photon démarre et accepte les drapeaux du
-  compose. Le smoke test lui-même passe 4 de ses 5 contrôles.
-  Ne manque que le géocodage de « Pharmacie Saint Jean Cocody », et le fait
-  que la route OSRM a été vérifiée sur un extrait synthétique plutôt que sur
-  Abidjan. Les deux tiennent à une seule cause : `download.geofabrik.de` et
-  `download1.graphhopper.com` sont refusés par la politique réseau de
-  l'environnement d'exécution. Sur un poste sans cette restriction, les quatre
-  commandes de « Environnement local » dans le [README](README.md) closent la
-  Phase 0.
+  compose. Depuis le 25/10/2026, Photon tourne sur l'index réel de la Côte
+  d'Ivoire et géocode « Pharmacie Saint Jean Cocody » : le smoke test passe
+  PostgreSQL et Photon. **Restent les deux contrôles OSRM**, faute de
+  l'extrait d'Abidjan : `download.geofabrik.de` est toujours refusé par la
+  politique réseau de l'environnement d'exécution. Sur un poste sans cette
+  restriction, `bash infra/osrm/prepare.sh` puis `pnpm infra:up && pnpm
+infra:smoke` closent la Phase 0.
 - Versions : toutes confirmées par exécution réelle. Le tag
   `osrm/osrm-backend:v5.27.1` initialement épinglé **n'existait pas** — aucun
   `v5.27.x` n'est publié ; corrigé en `v5.25.0`, le dernier tag stable, validé
   par `bash infra/osrm/verify-pipeline.sh`. `PHOTON_VERSION=0.6.0` est
   confirmée (jar récupéré, et `eclipse-temurin:21-jre` accepte les six
-  drapeaux du compose). Reste à confirmer au premier lancement réel : l'URL de
-  l'index GraphHopper, le seul élément jamais atteint.
+  drapeaux du compose). L'index GraphHopper est épinglé à sa version datée
+  `250720` et vérifié par MD5 : le lien `-latest` est cassé chez GraphHopper
+  (voir `decisions.md`).
 - Le nom « SIRA » est provisoire (cadrage) et le dépôt de marque OAPI reste à
   faire (cadrage §10.5).

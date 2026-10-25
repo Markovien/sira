@@ -9,7 +9,7 @@ aucun compte à créer.
 ```bash
 cp .env.example .env            # puis ajuster les mots de passe
 bash infra/osrm/prepare.sh      # ~15 min, ~2 Go — une seule fois
-bash infra/photon/prepare.sh    # ~5 min, ~1 Go — une seule fois
+bash infra/photon/prepare.sh    # ~1 min, ~150 Mo — une seule fois
 pnpm infra:up
 pnpm infra:smoke                # vérifie les critères d'acceptation Phase 0
 ```
@@ -28,7 +28,7 @@ récupérable ailleurs :
 | Domaine                     | Contenu                       | Taille  |
 | --------------------------- | ----------------------------- | ------- |
 | `download.geofabrik.de`     | Extrait OSM Côte d'Ivoire     | ~80 Mo  |
-| `download1.graphhopper.com` | Index de géocodage Photon CI  | ~700 Mo |
+| `download1.graphhopper.com` | Index de géocodage Photon CI  | 46 Mo   |
 | `github.com`                | Jar officiel Photon           | ~70 Mo  |
 | `registry-1.docker.io`      | Images PostGIS, OSRM, Temurin | ~1,5 Go |
 
@@ -52,7 +52,7 @@ donc structurant dès la Phase 0, avant même que le trafic soit implémenté.
 ### Pourquoi Photon plutôt que Nominatim
 
 Photon se contente d'un index pré-construit téléchargeable par pays
-(~1 Go pour la Côte d'Ivoire), là où Nominatim exige un import PostgreSQL de
+(46 Mo compressés pour la Côte d'Ivoire), là où Nominatim exige un import PostgreSQL de
 plusieurs heures et des dizaines de gigaoctets. Le jar officiel est lancé sur
 une image `eclipse-temurin` standard plutôt que via une image communautaire, ce
 qui garde la chaîne d'approvisionnement lisible.

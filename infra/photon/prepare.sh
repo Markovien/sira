@@ -9,8 +9,8 @@
 #   2. l'index pre-construit du pays, publie par GraphHopper — evite d'avoir a
 #      installer et importer Nominatim en local (plusieurs heures et ~50 Go).
 #
-# Duree : ~5 min. Espace disque : ~1 Go pour la Cote d'Ivoire.
-# Prerequis : curl (ou wget), bzip2 ou tar avec support bz2.
+# Duree : ~1 min. Espace disque : ~200 Mo pour la Cote d'Ivoire (46 Mo compresse).
+# Prerequis : curl (ou wget), md5sum, bzip2 ou tar avec support bz2.
 
 set -euo pipefail
 
@@ -19,7 +19,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PHOTON_VERSION="${PHOTON_VERSION:-0.6.0}"
 PHOTON_JAR_URL="${PHOTON_JAR_URL:-https://github.com/komoot/photon/releases/download/${PHOTON_VERSION}/photon-${PHOTON_VERSION}.jar}"
 PHOTON_COUNTRY_CODE="${PHOTON_COUNTRY_CODE:-ci}"
-PHOTON_INDEX_URL="${PHOTON_INDEX_URL:-https://download1.graphhopper.com/public/extracts/by-country-code/${PHOTON_COUNTRY_CODE}/photon-db-${PHOTON_COUNTRY_CODE}-latest.tar.bz2}"
+# Index date plutot que `-latest` : ce lien est casse chez GraphHopper (404),
+# et une version epinglee ne change pas de format dans notre dos
+# (decisions.md, 25/10/2026). Liste des dates publiees :
+#   https://download1.graphhopper.com/public/extracts/by-country-code/ci/
+PHOTON_INDEX_DATE="${PHOTON_INDEX_DATE:-250720}"
+PHOTON_INDEX_URL="${PHOTON_INDEX_URL:-https://download1.graphhopper.com/public/extracts/by-country-code/${PHOTON_COUNTRY_CODE}/photon-db-${PHOTON_COUNTRY_CODE}-${PHOTON_INDEX_DATE}.tar.bz2}"
 
 FORCE=0
 if [[ "${1:-}" == "--force" ]]; then
@@ -56,9 +61,22 @@ fi
 if [[ -d "${SCRIPT_DIR}/photon_data" && "${FORCE}" -eq 0 ]]; then
   log "Index photon_data deja present (utiliser --force pour re-importer)"
 else
-  log "Telechargement de l'index ${PHOTON_COUNTRY_CODE^^} (~700 Mo compresse)"
+  log "Telechargement de l'index ${PHOTON_COUNTRY_CODE^^} du ${PHOTON_INDEX_DATE}"
   fetch "${PHOTON_INDEX_URL}" "${SCRIPT_DIR}/photon-db.tar.bz2" \
     || die "telechargement de l'index impossible — verifier ${PHOTON_INDEX_URL}"
+  fetch "${PHOTON_INDEX_URL}.md5" "${SCRIPT_DIR}/photon-db.tar.bz2.md5" \
+    || die "somme MD5 introuvable a cote de l'index"
+
+  # Une archive tronquee se decompresse parfois en partie, et Photon demarre
+  # alors sur un index incomplet sans le dire.
+  log "Verification de l'empreinte MD5"
+  expected="$(cut -d' ' -f1 "${SCRIPT_DIR}/photon-db.tar.bz2.md5")"
+  actual="$(md5sum "${SCRIPT_DIR}/photon-db.tar.bz2" | cut -d' ' -f1)"
+  rm -f "${SCRIPT_DIR}/photon-db.tar.bz2.md5"
+  if [[ "${expected}" != "${actual}" ]]; then
+    rm -f "${SCRIPT_DIR}/photon-db.tar.bz2"
+    die "empreinte MD5 incorrecte (attendue ${expected}, obtenue ${actual})"
+  fi
 
   log "Decompression (peut prendre quelques minutes)"
   rm -rf "${SCRIPT_DIR}/photon_data"
