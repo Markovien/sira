@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "SIRA",
+    "slug": "sira",
+    "scheme": "sira",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["android", "ios"],
+    "android": {
+      "package": "ci.sira.app",
+      "permissions": []
+    },
+    "ios": {
+      "bundleIdentifier": "ci.sira.app"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

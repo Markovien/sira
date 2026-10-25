@@ -1,0 +1,21 @@
+{
+  "// ": "La base Expo apporte jsx et les types RN ; celle du depot, la rigueur (strict, noUncheckedIndexedAccess...). Dans cet ordre : la seconde l'emporte.",
+  "extends": ["expo/tsconfig.base", "../../tsconfig.base.json"],
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2022"],
+    "types": [],
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "test/**/*.ts",
+    "vitest.config.ts",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ]
+}

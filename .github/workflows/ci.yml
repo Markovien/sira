@@ -1,6 +1,6 @@
 # CI SIRA — roadmap Phase 0.1 et critere d'acceptation « CI verte ».
 #
-# Trois travaux independants, du plus rapide au plus lent, pour que l'echec
+# Travaux independants, du plus rapide au plus lent, pour que l'echec
 # arrive tot. Aucun service externe payant, aucun secret : la CI doit rester
 # executable par n'importe quel contributeur sur son fork.
 
@@ -266,3 +266,45 @@ jobs:
 
       - name: Demarrer l API compilee et l interroger
         run: bash apps/api/scripts/smoke.sh
+
+  # --- 6. Application mobile ------------------------------------------------
+  # Lint, types et tests du mobile passent deja par le travail « qualite ».
+  # Celui-ci verifie ce qu aucun d eux ne voit : que Metro resout le monorepo
+  # et que le bundle Hermes Android se compile. Sans SDK Android ni compte
+  # Expo — l APK reste l affaire d EAS ou de Gradle (decisions.md, 25/10/2026).
+  mobile:
+    name: Bundle mobile Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_NO_TELEMETRY: "1"
+      EXPO_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Installer Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Installer les dependances
+        run: pnpm install --frozen-lockfile
+
+      - name: Build des paquets partages
+        run: pnpm build
+
+      - name: Exporter le bundle Android
+        working-directory: apps/mobile
+        run: npx expo export --platform android --output-dir "$RUNNER_TEMP/mobile-export"
+
+      # Garde-fou du budget APK < 60 Mo : le JS n en est qu une part, mais
+      # c est celle qui derive sans bruit a chaque dependance ajoutee.
+      - name: Le bundle JS reste sous 8 Mo
+        run: |
+          size=$(find "$RUNNER_TEMP/mobile-export" -name '*.hbc' -exec stat -c %s {} + | awk '{s+=$1} END {print s}')
+          echo "Bundle Hermes : $((size / 1024)) Ko"
+          test "$size" -lt $((8 * 1024 * 1024))

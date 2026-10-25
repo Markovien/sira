@@ -54,3 +54,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Sorties de `expo prebuild` : regenerees, jamais editees a la main.
+apps/mobile/android/
+apps/mobile/ios/

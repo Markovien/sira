@@ -1,0 +1,34 @@
+{
+  "name": "@sira/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "android": "expo start --android",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "doctor": "expo-doctor"
+  },
+  "dependencies": {
+    "@expo/log-box": "~58.0.13",
+    "@expo/metro-runtime": "~58.0.15",
+    "@sira/shared": "workspace:*",
+    "@sira/tsp-core": "workspace:*",
+    "expo": "~58.0.19",
+    "expo-constants": "~58.0.13",
+    "expo-linking": "~58.0.14",
+    "expo-router": "~58.0.26",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
