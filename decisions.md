@@ -22,6 +22,30 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-25 — Index Photon : épingler une version datée, vérifiée par MD5
+
+**Contexte.** La politique réseau laisse désormais passer
+`download1.graphhopper.com` (Geofabrik reste refusé). Premier contact réel
+avec l'index : `photon-db-ci-latest.tar.bz2`, l'URL du script, est un lien
+cassé côté GraphHopper (81 octets, 404). Le seul index publié pour la Côte
+d'Ivoire est `photon-db-ci-250720.tar.bz2` — 46 Mo et non ~700 Mo, au format
+Elasticsearch attendu par Photon 0.6.
+
+**Décision.** `prepare.sh` télécharge l'index **daté** (`PHOTON_INDEX_DATE`,
+défaut `250720`) et vérifie sa somme contre le `.md5` publié à côté, avant de
+décompresser. Même principe que l'image OSRM épinglée : changer de données est
+un acte de commit, pas l'effet de bord d'une publication amont.
+
+**Alternative écartée.** Suivre `latest` : il est cassé aujourd'hui, et le
+jour où il sera réparé il pourra pointer vers un format incompatible avec
+Photon 0.6 sans que rien ne le signale.
+
+**Conséquence.** Le contrôle de géocodage du smoke test devient vérifiable. La
+Phase 0 reste ouverte tant que l'extrait OSM d'Abidjan (Geofabrik) est
+inaccessible : le routage réel n'est toujours pas vérifié.
+
+---
+
 ## 2026-10-25 — Un livreur ne liste que ses propres missions, côté serveur
 
 **Contexte.** `GET /missions` renvoie toutes les missions de l'organisation,
