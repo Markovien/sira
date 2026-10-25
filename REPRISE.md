@@ -11,23 +11,23 @@ remonter l'environnement pour le faire ?**
 
 ## En un coup d'œil
 
-|                    |                                                                         |
-| ------------------ | ----------------------------------------------------------------------- |
-| **Branche**        | `claude/phase-0-execution-iyvf4a`                                       |
-| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche |
-| **Phase courante** | **3 en cours** — lot 1 livré (squelette Expo, optimisation embarquée)   |
-| **Bloqué sur**     | rien côté code — deux points attendent le fondateur (voir plus bas)     |
+|                    |                                                                             |
+| ------------------ | --------------------------------------------------------------------------- |
+| **Branche**        | `claude/phase-0-execution-iyvf4a`                                           |
+| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche     |
+| **Phase courante** | **3 en cours** — lots 1 et 2 livrés ; le 3 (SQLite, synchro) est le suivant |
+| **Bloqué sur**     | rien côté code — deux points attendent le fondateur (voir plus bas)         |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
 | 0 — Fondations     | Complète **sauf** le smoke test infra, bloqué par le réseau         |
 | 1 — Backend cœur   | ✅ 16 routes, couverture 94 %                                       |
 | 2 — Optimisation   | ✅ TSP 0 % d'écart sur berlin52, VRP 0,01 % sur C101, orchestration |
-| **3 — Mobile TSP** | **en cours** : lot 1 sur 6 livré                                    |
+| **3 — Mobile TSP** | **en cours** : lots 1 et 2 sur 6 livrés                             |
 | 4 à 7              | à faire                                                             |
 
-**170 tests**, tous verts : 41 dans `@sira/shared`, 12 dans `tsp-core`, 76
-côté API (31 unitaires et 45 de bout en bout), 16 sur le solveur VRP, 25 sur
+**207 tests**, tous verts : 51 dans `@sira/shared`, 12 dans `tsp-core`, 83
+côté API (31 unitaires et 52 de bout en bout), 16 sur le solveur VRP, 45 sur
 la logique mobile.
 Couverture 94 % sur les services de l'API, seuil de 70 % appliqué en CI.
 
@@ -143,18 +143,18 @@ Deux pièges déjà rencontrés, qui ne se voient que là :
 - **Un test ignoré ressemble à un test réussi** : vérifier qu'aucun `↓`
   n'apparaît dans le rapport.
 
-## Prochaine étape : Phase 3, lot 2
+## Prochaine étape : Phase 3, lot 3
 
 La Phase 3 est découpée en lots, chacun livré vert et poussé :
 
-| Lot | Contenu                                                                                      | État        |
-| --- | -------------------------------------------------------------------------------------------- | ----------- |
-| 1   | Squelette Expo, thème, i18n ; matrice hors-ligne (`@sira/shared`) ; `planRoute` ; deep links | ✅ livré    |
-| 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions | **suivant** |
-| 3   | SQLite locale et file de synchronisation (mutations horodatées, rejeu à la reconnexion)      | à faire     |
-| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap    | à faire     |
-| 5   | Carte MapLibre hors-ligne (PMTiles) — dépend d'un extrait OSM, donc du réseau                | à faire     |
-| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours, build Android                                   | à faire     |
+| Lot | Contenu                                                                                         | État        |
+| --- | ----------------------------------------------------------------------------------------------- | ----------- |
+| 1   | Squelette Expo, thème, i18n ; matrice hors-ligne (`@sira/shared`) ; `planRoute` ; deep links    | ✅ livré    |
+| 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions    | ✅ livré    |
+| 3   | SQLite locale, file de synchronisation, création de mission hors-ligne, matrices OSRM via l'API | **suivant** |
+| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap       | à faire     |
+| 5   | Carte MapLibre hors-ligne (PMTiles) — dépend d'un extrait OSM, donc du réseau                   | à faire     |
+| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours, build Android                                      | à faire     |
 
 Ce qui est en place et à réutiliser :
 
@@ -165,6 +165,16 @@ Ce qui est en place et à réutiliser :
   `Linking.openURL`.
 - **`t()`** et `formatDuration` / `formatDistance` (`src/i18n`) : aucun texte
   en dur dans les écrans.
+- **`createApiClient`** (`src/core/api.ts`) : session restaurée sans réseau,
+  rafraîchissement unique, chaque réponse validée par les schémas de
+  `@sira/shared/responses.ts`. Ajouter une route = un schéma de réponse + une
+  méthode. `test/driver-scope.e2e.test.ts` côté API vérifie que les vraies
+  réponses passent ces schémas.
+- **`useRequest`** est provisoire : au lot 3, les écrans liront SQLite et le
+  réseau ne fera que l'alimenter.
+- La **création de mission** est au lot 3 : hors connexion, elle passe par la
+  file de synchronisation. Côté API, seuls `dispatcher` et `admin` créent —
+  un livreur indépendant est `admin` de son organisation, ce qui suffit.
 - `src/core` ne doit **jamais** importer `react-native` — c'est ce qui le rend
   testable sous Vitest. Stockage et réseau y entrent par interfaces.
 
@@ -174,6 +184,12 @@ Points d'attention :
   `node_modules/expo/bundledNativeModules.json` : `expo install --check` ne
   fonctionne pas ici, `api.expo.dev` étant hors de la politique réseau.
 - `expo export` passe hors-ligne avec `EXPO_OFFLINE=1`.
+- **Voir les écrans sans téléphone** : ajouter temporairement `react-dom` et
+  `react-native-web`, `"web"` dans les `platforms` d'`app.json`, une doublure
+  `src/platform/secure-session-store.web.ts` (SecureStore n'existe pas sur le
+  web), puis `expo export --platform web` et Playwright. L'API n'ayant pas de
+  CORS, intercepter ses appels avec `page.route`. Tout retirer avant de
+  commiter — le lot 2 a été vérifié ainsi, parcours complet.
 - `@sira/tsp-core` doit rester du TypeScript pur, sans API Node.
 - Les schémas Zod de `@sira/shared` sont partagés : ne pas réécrire les règles
   de validation côté mobile.
@@ -220,6 +236,9 @@ en base et la suppression d'une organisation emporte ses adresses.
 - Instance Solomon **R101** introuvable depuis une source accessible ; la
   couverture VRP s'appuie sur C101 plus le critère Abidjan.
 - URL de l'index GraphHopper : le seul élément d'infrastructure jamais atteint.
+- Les messages d'erreur de l'API sont en ASCII (« Numero ou mot de passe
+  incorrect ») et le mobile les affiche tels quels. À accentuer côté API —
+  ce sont des chaînes destinées à l'utilisateur.
 - `planRoute` n'est déterministe que si la recherche converge avant son budget
   de temps : vérifié à 15 arrêts, 8 fois sur 10 à 20. Au-delà, deux appuis
   peuvent donner deux ordres de coût voisin. Remède le jour où cela gêne : un
