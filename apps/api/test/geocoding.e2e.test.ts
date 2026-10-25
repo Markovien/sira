@@ -2,9 +2,10 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { haversineMeters } from '@sira/shared';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { AddressBookService } from '../src/geocoding/address-book.service';
+import { PhotonService } from '../src/geocoding/photon.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 /**
@@ -159,8 +160,11 @@ describe('Base d adresses proprietaire', () => {
   });
 
   it('signale un geocodage degrade quand Photon est injoignable', async () => {
-    // Photon n'est pas demarre dans cet environnement : la recherche doit
-    // malgre tout repondre, en le signalant.
+    // PhotonService renvoie une liste vide quand Photon est injoignable
+    // (photon.test.ts). On le force ici : un Photon demarre en local — il
+    // l'est depuis que son index est telechargeable — ne doit pas faire
+    // echouer ce test.
+    vi.spyOn(app.get(PhotonService), 'search').mockResolvedValueOnce([]);
     const res = await request(app.getHttpServer())
       .get('/geocoding/search')
       .query({ q: 'pharmacie st jean' })

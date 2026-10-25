@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type {
   CreateMissionInput,
   CreateStopInput,
@@ -9,6 +16,10 @@ import type {
 import { validateTimeWindow } from '@sira/shared';
 import { AddressBookService } from '../geocoding/address-book.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const STOPS_IN_ORDER = {
+  stops: { orderBy: [{ sequence: 'asc' as const }, { createdAt: 'asc' as const }] },
+};
 
 /**
  * Toutes les methodes prennent `organizationId` en premier argument, jamais en
@@ -29,8 +40,12 @@ export class MissionsService {
   async create(organizationId: string, input: CreateMissionInput) {
     await this.assertReferencesBelongToOrg(organizationId, input);
 
-    return this.prisma.mission.create({
+    const replayed = await this.replayedMission(organizationId, input.id);
+    if (replayed) return replayed;
+
+    const create = this.prisma.mission.create({
       data: {
+        ...(input.id ? { id: input.id } : {}),
         organizationId,
         label: input.label ?? null,
         date: new Date(input.date),
@@ -39,8 +54,9 @@ export class MissionsService {
         vehicleId: input.vehicleId ?? null,
         driverId: input.driverId ?? null,
       },
-      include: { stops: { orderBy: [{ sequence: 'asc' }, { createdAt: 'asc' }] } },
+      include: STOPS_IN_ORDER,
     });
+    return this.idempotent(create, () => this.replayedMission(organizationId, input.id));
   }
 
   /**
@@ -77,7 +93,7 @@ export class MissionsService {
   async findOne(organizationId: string, id: string, driverScope?: string) {
     const mission = await this.prisma.mission.findFirst({
       where: { id, organizationId, ...(driverScope ? { driverId: driverScope } : {}) },
-      include: { stops: { orderBy: [{ sequence: 'asc' }, { createdAt: 'asc' }] } },
+      include: STOPS_IN_ORDER,
     });
     // 404 et non 403 quand la mission appartient a une autre organisation, ou
     // a un autre livreur : repondre « interdit » confirmerait son existence.
@@ -100,7 +116,7 @@ export class MissionsService {
         ...(input.vehicleId !== undefined ? { vehicleId: input.vehicleId } : {}),
         ...(input.driverId !== undefined ? { driverId: input.driverId } : {}),
       },
-      include: { stops: { orderBy: [{ sequence: 'asc' }, { createdAt: 'asc' }] } },
+      include: STOPS_IN_ORDER,
     });
   }
 
@@ -116,8 +132,12 @@ export class MissionsService {
     await this.findOne(organizationId, missionId);
     assertTimeWindow(input);
 
-    return this.prisma.stop.create({
+    const replayed = await this.replayedStop(missionId, input.id);
+    if (replayed) return replayed;
+
+    const create = this.prisma.stop.create({
       data: {
+        ...(input.id ? { id: input.id } : {}),
         missionId,
         label: input.label,
         lat: input.lat,
@@ -135,6 +155,46 @@ export class MissionsService {
         timeWindowEnd: input.timeWindowEnd ?? null,
       },
     });
+    return this.idempotent(create, () => this.replayedStop(missionId, input.id));
+  }
+
+  // --- Creations idempotentes (decisions.md, 25/10/2026) ---------------------
+  //
+  // Le mobile rejoue hors connexion des creations dont il a choisi l'id. Un
+  // rejeu renvoie l'existant ; un id deja pris hors de la portee de l'appelant
+  // repond 409, sans dire ou.
+
+  private async replayedMission(organizationId: string, id: string | undefined) {
+    if (!id) return null;
+    const found = await this.prisma.mission.findUnique({
+      where: { id },
+      include: STOPS_IN_ORDER,
+    });
+    if (found && found.organizationId !== organizationId) throw idTaken();
+    return found;
+  }
+
+  private async replayedStop(missionId: string, id: string | undefined) {
+    if (!id) return null;
+    const found = await this.prisma.stop.findUnique({ where: { id } });
+    if (found && found.missionId !== missionId) throw idTaken();
+    return found;
+  }
+
+  /**
+   * Deux rejeux simultanes passent tous deux la verification d'existence ; le
+   * second bute alors sur la cle primaire. On relit au lieu d'echouer.
+   */
+  private async idempotent<T>(create: Promise<T>, reread: () => Promise<T | null>): Promise<T> {
+    try {
+      return await create;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const found = await reread();
+        if (found) return found;
+      }
+      throw error;
+    }
   }
 
   async updateStop(
@@ -349,4 +409,8 @@ function toStopData(input: UpdateStopInput) {
     if (input[field] !== undefined) data[field] = input[field];
   }
   return data;
+}
+
+function idTaken(): ConflictException {
+  return new ConflictException('Identifiant deja utilise');
 }

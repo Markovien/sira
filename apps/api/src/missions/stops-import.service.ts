@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { importStopSchema, validateTimeWindow, type CreateStopInput } from '@sira/shared';
+import {
+  importStopSchema,
+  validateTimeWindow,
+  type CreateStopInput,
+  type ImportStopInput,
+} from '@sira/shared';
 import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 
@@ -36,7 +41,7 @@ export interface ParsedImport {
  * « tel contact », « PHONE ». La normalisation retire accents, casse et
  * separateurs avant comparaison.
  */
-const COLUMN_ALIASES: Record<keyof CreateStopInput, string[]> = {
+const COLUMN_ALIASES: Record<keyof ImportStopInput, string[]> = {
   label: ['label', 'libelle', 'nom', 'name', 'client', 'destinataire'],
   lat: ['lat', 'latitude'],
   lon: ['lon', 'lng', 'long', 'longitude'],
@@ -69,10 +74,10 @@ function normalizeHeader(header: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-const ALIAS_TO_FIELD = new Map<string, keyof CreateStopInput>();
+const ALIAS_TO_FIELD = new Map<string, keyof ImportStopInput>();
 for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
   for (const alias of aliases) {
-    ALIAS_TO_FIELD.set(alias, field as keyof CreateStopInput);
+    ALIAS_TO_FIELD.set(alias, field as keyof ImportStopInput);
   }
 }
 

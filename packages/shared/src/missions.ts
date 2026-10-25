@@ -26,7 +26,15 @@ export const isoDateSchema = z
 
 const optionalId = z.string().min(1).nullable().optional();
 
+/**
+ * Identifiant choisi par le client hors connexion, pour que le rejeu d'une
+ * creation soit idempotent (decisions.md, 25/10/2026). UUID impose : un
+ * identifiant devinable faciliterait les collisions volontaires.
+ */
+export const clientIdSchema = z.string().uuid('Identifiant client attendu au format UUID');
+
 export const createMissionSchema = z.object({
+  id: clientIdSchema.optional(),
   label: z.string().min(1).max(160).optional(),
   date: isoDateSchema,
   startDepotId: optionalId,
@@ -36,6 +44,7 @@ export const createMissionSchema = z.object({
 });
 
 export const updateMissionSchema = createMissionSchema
+  .omit({ id: true })
   .partial()
   .extend({ status: missionStatusSchema.optional() })
   // Un PATCH vide est presque toujours une erreur d'appel : le signaler plutot
@@ -59,6 +68,7 @@ export const listMissionsQuerySchema = z.object({
  * premiere livraison confirmee.
  */
 export const createStopSchema = z.object({
+  id: clientIdSchema.optional(),
   label: z.string().min(1).max(160),
   lat: coordinatesSchema.shape.lat,
   lon: coordinatesSchema.shape.lon,
@@ -82,7 +92,7 @@ export const createStopSchema = z.object({
  * l'API reste strict pour les clients JSON, qui n'ont aucune raison d'envoyer
  * une coordonnee sous forme de texte.
  */
-export const importStopSchema = createStopSchema.extend({
+export const importStopSchema = createStopSchema.omit({ id: true }).extend({
   lat: z.coerce.number().min(COTE_DIVOIRE_BBOX.minLat).max(COTE_DIVOIRE_BBOX.maxLat),
   lon: z.coerce.number().min(COTE_DIVOIRE_BBOX.minLon).max(COTE_DIVOIRE_BBOX.maxLon),
 });
@@ -90,6 +100,7 @@ export const importStopSchema = createStopSchema.extend({
 export type ImportStopInput = z.infer<typeof importStopSchema>;
 
 export const updateStopSchema = createStopSchema
+  .omit({ id: true })
   .partial()
   .extend({
     status: stopStatusSchema.optional(),
