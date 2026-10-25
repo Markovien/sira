@@ -21,6 +21,7 @@ export function fakeBackend() {
     /** Le serveur enregistre puis la reponse se perd : le cas du doublon. */
     dropNextResponse: false,
     requests: [] as string[],
+    patches: [] as { body: Record<string, unknown>; deviceTime: string | undefined }[],
   };
 
   const json = (status: number, body: unknown) =>
@@ -82,6 +83,18 @@ export function fakeBackend() {
         stops.set(id, stopFixture(id, missionId, { label: String(body.label) }));
       }
       response = json(201, stops.get(id));
+    } else if (method === 'PATCH' && /^\/missions\/[^/]+\/stops\/[^/]+$/.test(path)) {
+      const [, , missionId, , stopId] = path.split('/');
+      const current = stops.get(stopId!);
+      if (!current || current.missionId !== missionId)
+        return json(404, { message: 'Introuvable' });
+      state.patches.push({
+        body,
+        deviceTime: (init.headers as Record<string, string>)['X-Device-Time'],
+      });
+      const updated = { ...current, ...(body as Partial<Stop>) };
+      stops.set(stopId!, updated);
+      response = json(200, updated);
     } else if (method === 'GET' && path.startsWith('/missions/')) {
       const id = path.split('/')[2]!;
       response = missions.has(id)

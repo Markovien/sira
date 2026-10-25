@@ -8,6 +8,8 @@ import {
   type Mission,
   type MissionDetail,
   type Stop,
+  type StopStatus,
+  STOP_STATUSES,
 } from '@sira/shared';
 import { z } from 'zod';
 
@@ -65,6 +67,19 @@ const MIGRATIONS: readonly string[] = [
   );
   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `,
+  // Preuves de livraison, gardees 30 jours sur le telephone (decisions.md,
+  // 26/10/2026). `data` : nom du fichier photo, ou trace SVG de la signature.
+  `
+  CREATE TABLE proofs (
+    id TEXT PRIMARY KEY,
+    stop_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('photo', 'signature')),
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX proofs_by_stop ON proofs(stop_id);
+  CREATE INDEX proofs_by_age ON proofs(created_at);
+  `,
 ];
 
 // --- Mutations de la file d'envoi --------------------------------------------
@@ -77,6 +92,19 @@ export const outboxMutationSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('addStop'),
     payload: z.object({ missionId: z.string().min(1), stop: newStopSchema }),
+  }),
+  z.object({
+    kind: z.literal('updateStop'),
+    payload: z.object({
+      missionId: z.string().min(1),
+      stopId: z.string().min(1),
+      patch: z.object({
+        status: z.enum(STOP_STATUSES),
+        failureReason: z.string().max(400).nullable(),
+        completedAt: z.string().datetime({ offset: true }),
+        clockWentBack: z.boolean(),
+      }),
+    }),
   }),
 ]);
 export type OutboxMutation = z.infer<typeof outboxMutationSchema>;
@@ -101,6 +129,28 @@ export interface KnownPlace {
   readonly lat: number;
   readonly lon: number;
 }
+
+export type ProofKind = 'photo' | 'signature';
+
+export interface Proof {
+  readonly id: string;
+  readonly stopId: string;
+  readonly kind: ProofKind;
+  readonly data: string;
+  readonly createdAt: string;
+}
+
+/** Une saisie de statut sur le terrain : livre, echec ou report. */
+export interface StopOutcome {
+  readonly status: Exclude<StopStatus, 'pending'>;
+  readonly failureReason?: string | null;
+}
+
+/** Duree de conservation des preuves sur le telephone (arbitrage du fondateur). */
+export const PROOF_RETENTION_DAYS = 30;
+
+/** Heure de la saisie la plus tardive vue par ce telephone. */
+const LAST_EVENT_KEY = 'lastEventAt';
 
 export type NewMission = Omit<CreateMissionInput, 'id'> & { id: string };
 export type NewStop = Omit<CreateStopInput, 'id'> & { id: string };
@@ -166,7 +216,7 @@ export function createLocalDb(driver: SqlDriver) {
   }
 
   async function wipe() {
-    for (const table of ['stops', 'missions', 'outbox', 'rejected', 'meta']) {
+    for (const table of ['stops', 'missions', 'outbox', 'rejected', 'meta', 'proofs']) {
       await driver.run(`DELETE FROM ${table}`);
     }
   }
@@ -290,6 +340,118 @@ export function createLocalDb(driver: SqlDriver) {
           now,
         );
         return stop;
+      });
+    },
+
+    /**
+     * Livre, echec ou report, saisi sur le terrain. L'heure est celle du
+     * telephone ; si elle precede la saisie la plus tardive deja vue, l'horloge
+     * a recule entre-temps et le serveur en sera prevenu (decisions.md,
+     * 26/10/2026).
+     */
+    async recordOutcome(
+      missionId: string,
+      stopId: string,
+      outcome: StopOutcome,
+      now: Date,
+    ): Promise<{ clockWentBack: boolean }> {
+      const stamp = now.toISOString();
+      return transaction(async () => {
+        const [row] = await driver.all<{ body: string; position: number }>(
+          'SELECT body, position FROM stops WHERE id = ? AND mission_id = ?',
+          [stopId, missionId],
+        );
+        if (!row) throw new Error(`Arret ${stopId} absent de la base locale`);
+        const [last] = await driver.all<{ value: string }>(
+          'SELECT value FROM meta WHERE key = ?',
+          [LAST_EVENT_KEY],
+        );
+        const clockWentBack = last !== undefined && stamp < last.value;
+        const failureReason =
+          outcome.status === 'delivered' ? null : (outcome.failureReason ?? null);
+
+        const stop = stopSchema.parse(JSON.parse(row.body));
+        await writeStop(
+          {
+            ...stop,
+            status: outcome.status,
+            failureReason,
+            completedAt: stamp,
+            updatedAt: stamp,
+          },
+          row.position,
+        );
+        await enqueue(
+          missionId,
+          {
+            kind: 'updateStop',
+            payload: {
+              missionId,
+              stopId,
+              patch: {
+                status: outcome.status,
+                failureReason,
+                completedAt: stamp,
+                clockWentBack,
+              },
+            },
+          },
+          now,
+        );
+        // On retient le maximum : tant que l'horloge n'a pas rattrape la saisie
+        // la plus tardive, chaque nouvelle saisie reste signalee.
+        if (!clockWentBack) {
+          await driver.run('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', [
+            LAST_EVENT_KEY,
+            stamp,
+          ]);
+        }
+        return { clockWentBack };
+      });
+    },
+
+    // --- Preuves de livraison -------------------------------------------------
+
+    addProof(proof: Proof): Promise<void> {
+      return exclusive(() =>
+        driver.run(
+          'INSERT INTO proofs (id, stop_id, kind, data, created_at) VALUES (?, ?, ?, ?, ?)',
+          [proof.id, proof.stopId, proof.kind, proof.data, proof.createdAt],
+        ),
+      );
+    },
+
+    proofsFor(stopId: string): Promise<Proof[]> {
+      return exclusive(async () => {
+        const rows = await driver.all<{
+          id: string;
+          stop_id: string;
+          kind: ProofKind;
+          data: string;
+          created_at: string;
+        }>('SELECT * FROM proofs WHERE stop_id = ? ORDER BY created_at', [stopId]);
+        return rows.map((r) => ({
+          id: r.id,
+          stopId: r.stop_id,
+          kind: r.kind,
+          data: r.data,
+          createdAt: r.created_at,
+        }));
+      });
+    },
+
+    /**
+     * Efface les preuves de plus de `PROOF_RETENTION_DAYS` jours et renvoie les
+     * fichiers photo encore references, pour que l'appelant supprime les autres.
+     */
+    expireProofs(now: Date): Promise<Set<string>> {
+      const limit = new Date(now.getTime() - PROOF_RETENTION_DAYS * 86_400_000).toISOString();
+      return transaction(async () => {
+        await driver.run('DELETE FROM proofs WHERE created_at < ?', [limit]);
+        const rows = await driver.all<{ data: string }>(
+          "SELECT data FROM proofs WHERE kind = 'photo'",
+        );
+        return new Set(rows.map((r) => r.data));
       });
     },
 

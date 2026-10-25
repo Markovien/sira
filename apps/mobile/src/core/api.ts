@@ -17,6 +17,7 @@ import {
   type Stop,
   type MissionDetail,
   type MissionList,
+  type UpdateStopInput,
 } from '@sira/shared';
 import { z, type ZodType } from 'zod';
 import type { RoutedMatrices } from './optimize';
@@ -83,6 +84,8 @@ export interface ApiClientOptions {
   /** Appele quand la session est definitivement perdue. */
   readonly onSessionExpired?: () => void;
   readonly timeoutMs?: number;
+  /** Horloge du telephone ; injectee pour les tests. */
+  readonly now?: () => Date;
 }
 
 /**
@@ -105,6 +108,7 @@ export function createApiClient(options: ApiClientOptions) {
   const { store, onSessionExpired } = options;
   const baseUrl = options.baseUrl.replace(/\/+$/, '');
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const now = options.now ?? (() => new Date());
 
   let accessToken: string | null = null;
   // Un seul rafraichissement en vol : l'API revoque le jeton presente, deux
@@ -117,6 +121,10 @@ export function createApiClient(options: ApiClientOptions) {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
     if (token) headers.Authorization = `Bearer ${token}`;
+    // Heure du telephone a l'envoi : le serveur en deduit le decalage de son
+    // horloge et corrige l'heure declaree d'une livraison (decisions.md,
+    // 26/10/2026). Quelques octets par requete.
+    headers['X-Device-Time'] = now().toISOString();
     try {
       return await options.fetch(`${baseUrl}${path}`, {
         method: init.method ?? 'GET',
@@ -257,6 +265,14 @@ export function createApiClient(options: ApiClientOptions) {
         method: 'POST',
         body: input,
       });
+    },
+
+    updateStop(missionId: string, stopId: string, patch: UpdateStopInput): Promise<Stop> {
+      return request(
+        `/missions/${encodeURIComponent(missionId)}/stops/${encodeURIComponent(stopId)}`,
+        stopSchema,
+        { method: 'PATCH', body: patch },
+      );
     },
 
     /**

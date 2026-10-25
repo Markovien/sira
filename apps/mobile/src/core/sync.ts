@@ -42,6 +42,11 @@ async function replay(api: ApiClient, entry: OutboxEntry): Promise<void> {
     case 'addStop':
       await api.addStop(mutation.payload.missionId, mutation.payload.stop);
       return;
+    case 'updateStop': {
+      const { missionId, stopId, patch } = mutation.payload;
+      await api.updateStop(missionId, stopId, patch);
+      return;
+    }
   }
 }
 

@@ -170,3 +170,99 @@ describe('appartenance', () => {
     expect(await db.getMeta('owner')).toBeNull();
   });
 });
+
+describe('saisies de terrain', () => {
+  async function withStop() {
+    const db = await freshDb();
+    await db.createMission({ id: M1, date: '2026-11-04' }, NOW);
+    await db.addStop(M1, newStop(S1, 'Pharmacie'), NOW);
+    await db.addStop(M1, newStop(S2, 'Boutique'), NOW);
+    return db;
+  }
+
+  it('marque l arret localement et met la saisie horodatee en file', async () => {
+    const db = await withStop();
+    const at = new Date('2026-11-04T10:15:00Z');
+    expect(await db.recordOutcome(M1, S1, { status: 'delivered' }, at)).toEqual({
+      clockWentBack: false,
+    });
+    const stop = (await db.getMission(M1))?.stops.find((s) => s.id === S1);
+    expect(stop).toMatchObject({ status: 'delivered', completedAt: at.toISOString() });
+
+    let entry = await db.nextOutboxEntry();
+    while (entry && entry.mutation.kind !== 'updateStop') {
+      await db.removeOutboxEntry(entry.seq);
+      entry = await db.nextOutboxEntry();
+    }
+    expect(entry?.mutation.payload).toEqual({
+      missionId: M1,
+      stopId: S1,
+      patch: {
+        status: 'delivered',
+        failureReason: null,
+        completedAt: at.toISOString(),
+        clockWentBack: false,
+      },
+    });
+  });
+
+  it('garde le motif d un echec, pas celui d une livraison', async () => {
+    const db = await withStop();
+    await db.recordOutcome(M1, S1, { status: 'failed', failureReason: 'Client absent' }, NOW);
+    await db.recordOutcome(M1, S2, { status: 'delivered', failureReason: 'ignore' }, NOW);
+    const stops = (await db.getMission(M1))?.stops;
+    expect(stops?.map((s) => s.failureReason)).toEqual(['Client absent', null]);
+  });
+
+  it('detecte une horloge reculee entre deux saisies', async () => {
+    const db = await withStop();
+    await db.recordOutcome(M1, S1, { status: 'delivered' }, new Date('2026-11-04T11:00:00Z'));
+    // Le livreur recule son telephone d'une heure avant la saisie suivante.
+    const back = await db.recordOutcome(
+      M1,
+      S2,
+      { status: 'delivered' },
+      new Date('2026-11-04T10:00:00Z'),
+    );
+    expect(back.clockWentBack).toBe(true);
+  });
+
+  it('refuse un arret inconnu', async () => {
+    const db = await withStop();
+    await expect(
+      db.recordOutcome(M1, 'inconnu', { status: 'delivered' }, NOW),
+    ).rejects.toThrow();
+  });
+});
+
+describe('preuves', () => {
+  it('expire les preuves de plus de 30 jours et liste les photos gardees', async () => {
+    const db = await freshDb();
+    const day = (d: number) => new Date(Date.UTC(2026, 10, d)).toISOString();
+    await db.addProof({
+      id: 'p1',
+      stopId: S1,
+      kind: 'photo',
+      data: 'vieille.jpg',
+      createdAt: day(1),
+    });
+    await db.addProof({
+      id: 'p2',
+      stopId: S1,
+      kind: 'photo',
+      data: 'recente.jpg',
+      createdAt: day(20),
+    });
+    await db.addProof({
+      id: 'p3',
+      stopId: S1,
+      kind: 'signature',
+      data: 'M0 0 L1 1',
+      createdAt: day(20),
+    });
+
+    const kept = await db.expireProofs(new Date(Date.UTC(2026, 11, 5)));
+    expect([...kept]).toEqual(['recente.jpg']);
+    expect((await db.proofsFor(S1)).map((p) => p.id)).toEqual(['p2', 'p3']);
+  });
+});

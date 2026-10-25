@@ -118,3 +118,39 @@ describe('synchronisation', () => {
     expect(backend.state.requests.filter((r) => r === 'GET /missions')).toHaveLength(1);
   });
 });
+
+describe('statuts saisis sur le terrain', () => {
+  it('envoie livraison et echec avec l heure du telephone', async () => {
+    const { backend, db, engine } = await setup();
+    await db.createMission({ id: uuid(0), date: '2026-11-04' }, NOW);
+    await db.addStop(uuid(0), newStop(1), NOW);
+    await db.addStop(uuid(0), newStop(2), NOW);
+    await engine.sync();
+
+    backend.state.online = false;
+    const deliveredAt = new Date('2026-11-04T09:30:00Z');
+    await db.recordOutcome(uuid(0), uuid(1), { status: 'delivered' }, deliveredAt);
+    await db.recordOutcome(
+      uuid(0),
+      uuid(2),
+      { status: 'failed', failureReason: 'Client absent' },
+      new Date('2026-11-04T09:45:00Z'),
+    );
+    expect((await engine.sync()).status).toBe('offline');
+
+    backend.state.online = true;
+    expect(await engine.sync()).toMatchObject({ status: 'synced', pushed: 2 });
+    expect(backend.stops.get(uuid(1))?.status).toBe('delivered');
+    expect(backend.stops.get(uuid(2))).toMatchObject({
+      status: 'failed',
+      failureReason: 'Client absent',
+    });
+    expect(backend.state.patches[0]?.body).toMatchObject({
+      completedAt: deliveredAt.toISOString(),
+      clockWentBack: false,
+    });
+    // Heure courante du telephone a l'envoi, pas celle de la saisie.
+    expect(backend.state.patches[0]?.deviceTime).toBeDefined();
+    expect(backend.state.patches[0]?.deviceTime).not.toBe(deliveredAt.toISOString());
+  });
+});
