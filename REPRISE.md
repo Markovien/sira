@@ -15,19 +15,20 @@ remonter l'environnement pour le faire ?**
 | ------------------ | ----------------------------------------------------------------------- |
 | **Branche**        | `claude/phase-0-execution-iyvf4a`                                       |
 | **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche |
-| **Phase courante** | 2 terminée ; **la 3 est la prochaine**                                  |
-| **Bloqué sur**     | rien côté code — un seul point attend le fondateur (voir plus bas)      |
+| **Phase courante** | **3 en cours** — lot 1 livré (squelette Expo, optimisation embarquée)   |
+| **Bloqué sur**     | rien côté code — deux points attendent le fondateur (voir plus bas)     |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
 | 0 — Fondations     | Complète **sauf** le smoke test infra, bloqué par le réseau         |
 | 1 — Backend cœur   | ✅ 16 routes, couverture 94 %                                       |
 | 2 — Optimisation   | ✅ TSP 0 % d'écart sur berlin52, VRP 0,01 % sur C101, orchestration |
-| **3 — Mobile TSP** | **à démarrer**                                                      |
+| **3 — Mobile TSP** | **en cours** : lot 1 sur 6 livré                                    |
 | 4 à 7              | à faire                                                             |
 
-**129 tests**, tous verts : 25 dans `@sira/shared`, 12 dans `tsp-core`, 76
-côté API (31 unitaires et 45 de bout en bout), 16 sur le solveur VRP.
+**170 tests**, tous verts : 41 dans `@sira/shared`, 12 dans `tsp-core`, 76
+côté API (31 unitaires et 45 de bout en bout), 16 sur le solveur VRP, 25 sur
+la logique mobile.
 Couverture 94 % sur les services de l'API, seuil de 70 % appliqué en CI.
 
 Compter avec `git log --oneline origin/main..HEAD` plutôt que de se fier à ce
@@ -40,15 +41,16 @@ tableau s'il paraît daté.
 À lire avant d'écrire quoi que ce soit : la moitié de ce qu'on croit devoir
 construire est déjà là.
 
-| Emplacement                | Contenu                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/api`                 | NestJS + Prisma. 16 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation.                              |
-| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web. |
-| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                      |
-| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                  |
-| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM.                      |
-| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                           |
-| `.github/workflows/ci.yml` | 5 travaux : qualité, données, scripts, solveur VRP, API compilée.                                                                    |
+| Emplacement                | Contenu                                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`                 | NestJS + Prisma. 16 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation.                                |
+| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web.   |
+| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                        |
+| `apps/mobile`              | Expo SDK 58 + expo-router. `src/core` (TS pur, testé en Node) : optimisation embarquée, liens « Y aller ». Thème contrasté, textes FR. |
+| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                    |
+| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM.                        |
+| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                             |
+| `.github/workflows/ci.yml` | 6 travaux : qualité, données, scripts, solveur VRP, API compilée, bundle mobile Android (< 8 Mo).                                      |
 
 Trois conventions qui évitent de refaire le travail :
 
@@ -141,24 +143,38 @@ Deux pièges déjà rencontrés, qui ne se voient que là :
 - **Un test ignoré ressemble à un test réussi** : vérifier qu'aucun `↓`
   n'apparaît dans le rapport.
 
-## Prochaine étape : Phase 3, mobile livreur
+## Prochaine étape : Phase 3, lot 2
 
-Lire d'abord la Phase 3 de [`02-ROADMAP-DEV.md`](02-ROADMAP-DEV.md). Dans
-l'ordre des dépendances :
+La Phase 3 est découpée en lots, chacun livré vert et poussé :
 
-1. Setup Expo + expo-router, thème à fort contraste (usage en plein soleil),
-   français par défaut.
-2. Écrans : connexion, liste des missions, création, détail.
-3. Carte hors-ligne (tuiles vectorielles, MapLibre RN).
-4. **Optimisation embarquée** — `@sira/tsp-core` est prêt et déjà validé ;
-   c'est le même code que l'API utilise pour le cas mono-véhicule.
-5. Navigation par deep link, exécution de tournée, offline-first SQLite.
+| Lot | Contenu                                                                                      | État        |
+| --- | -------------------------------------------------------------------------------------------- | ----------- |
+| 1   | Squelette Expo, thème, i18n ; matrice hors-ligne (`@sira/shared`) ; `planRoute` ; deep links | ✅ livré    |
+| 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions | **suivant** |
+| 3   | SQLite locale et file de synchronisation (mutations horodatées, rejeu à la reconnexion)      | à faire     |
+| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap    | à faire     |
+| 5   | Carte MapLibre hors-ligne (PMTiles) — dépend d'un extrait OSM, donc du réseau                | à faire     |
+| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours, build Android                                   | à faire     |
 
-Points d'attention connus :
+Ce qui est en place et à réutiliser :
 
-- `@sira/tsp-core` doit rester du TypeScript pur, sans API Node — il tourne
-  dans Hermes. Son build double ESM/CJS est déjà en place.
-- `node-linker=hoisted` est déjà posé dans `.npmrc` pour Expo.
+- **`planRoute`** (`apps/mobile/src/core/optimize.ts`) sert au calcul initial
+  _et_ au re-calcul de l'ordre restant : position courante + arrêts restants.
+  Sans matrices OSRM, il bascule sur `fallbackMatrices` de `@sira/shared`.
+- **`navigationLinks` + `openFirst`** : l'écran n'a qu'à passer
+  `Linking.openURL`.
+- **`t()`** et `formatDuration` / `formatDistance` (`src/i18n`) : aucun texte
+  en dur dans les écrans.
+- `src/core` ne doit **jamais** importer `react-native` — c'est ce qui le rend
+  testable sous Vitest. Stockage et réseau y entrent par interfaces.
+
+Points d'attention :
+
+- Les versions des modules natifs se prennent dans
+  `node_modules/expo/bundledNativeModules.json` : `expo install --check` ne
+  fonctionne pas ici, `api.expo.dev` étant hors de la politique réseau.
+- `expo export` passe hors-ligne avec `EXPO_OFFLINE=1`.
+- `@sira/tsp-core` doit rester du TypeScript pur, sans API Node.
 - Les schémas Zod de `@sira/shared` sont partagés : ne pas réécrire les règles
   de validation côté mobile.
 
@@ -166,9 +182,10 @@ Points d'attention connus :
 
 ## Ce qui attend le fondateur
 
-**Un seul point : l'autorisation réseau, qui clôt la Phase 0.**
+**1. L'autorisation réseau, qui clôt la Phase 0.**
 `download.geofabrik.de` et `download1.graphhopper.com` sont refusés par la
-politique d'egress (403 au CONNECT), re-testé plusieurs fois. Sans eux, ni
+politique d'egress (403 au CONNECT), re-testé plusieurs fois — dernière fois
+le 25/10/2026, toujours refusé. Sans eux, ni
 extrait OSM d'Abidjan ni index de géocodage. Probablement une **nouvelle
 session** à ouvrir pour que le réglage prenne effet. Ensuite :
 
@@ -182,6 +199,12 @@ l'environnement dans la barre de titre, puis **Edit → Network access** — soi
 un niveau d'accès plus large, soit ces deux domaines sous « Allowed domains »
 en gardant cochée la case des gestionnaires de paquets. Documentation :
 <https://code.claude.com/docs/en/cloud-environments#network-access>
+
+**2. Le build Android : EAS ou Gradle local ?** Le critère d'acceptation de
+la Phase 3 cite EAS Build, service Expo gratuit sous un quota de builds puis
+payant, qui demande un compte et l'envoi du code. Rien n'est configuré tant que
+ce n'est pas tranché (`decisions.md`, 25/10/2026). L'alternative sans tiers —
+`expo prebuild` puis Gradle — demande un SDK Android sur le poste de build.
 
 _Déjà tranché, rien à redemander :_ la base d'adresses reste **cloisonnée par
 organisation** (18/10/2026, pour la sécurité). `organizationId` est obligatoire
@@ -197,3 +220,7 @@ en base et la suppression d'une organisation emporte ses adresses.
 - Instance Solomon **R101** introuvable depuis une source accessible ; la
   couverture VRP s'appuie sur C101 plus le critère Abidjan.
 - URL de l'index GraphHopper : le seul élément d'infrastructure jamais atteint.
+- `planRoute` n'est déterministe que si la recherche converge avant son budget
+  de temps : vérifié à 15 arrêts, 8 fois sur 10 à 20. Au-delà, deux appuis
+  peuvent donner deux ordres de coût voisin. Remède le jour où cela gêne : un
+  budget en itérations dans `tsp-core`, en plus du budget en temps.

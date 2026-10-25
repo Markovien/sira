@@ -55,6 +55,14 @@ pnpm data:validate      # valide data/abidjan-stops.json contre le schéma Zod
 pnpm data:check         # vérifie que le JSON est bien la sortie du générateur
 ```
 
+### Mobile
+
+```bash
+pnpm --filter @sira/mobile dev      # serveur Metro (Expo Go ou build de dev)
+pnpm --filter @sira/mobile test     # logique de src/core, sous Vitest en Node
+cd apps/mobile && EXPO_OFFLINE=1 npx expo export --platform android   # bundle Hermes, comme la CI
+```
+
 Ces commandes sont exactement celles que rejoue la CI. Avant de pousser, et
 **depuis un arbre nettoyé** (`rm -rf packages/*/dist apps/*/dist .turbo`) :
 
@@ -187,7 +195,7 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
 | 0 — Fondations   | Non close : smoke test infra bloqué (voir dette) | Monorepo, CI verte, docker-compose, dataset Abidjan |
 | 1 — Backend cœur | **Terminée** — 14 routes, couverture 94 %        | API missions complète                               |
 | 2 — Optimisation | **Terminée** — TSP 0 %, VRP 0,01 %, `/optimize`  | TSP + VRP benchmarkés                               |
-| 3 — Mobile TSP   | **À démarrer**                                   | MVP livreur hors-ligne                              |
+| 3 — Mobile TSP   | **En cours** — squelette, optimisation embarquée | MVP livreur hors-ligne                              |
 | 4 — Web VRP      | À faire                                          | MVP flotte démontrable                              |
 | 5 — Trafic       | À faire                                          | Re-planification dynamique                          |
 | 6 — Freemium     | À faire                                          | Paiement mobile money                               |
