@@ -11,12 +11,12 @@ remonter l'environnement pour le faire ?**
 
 ## En un coup d'œil
 
-|                     |                                                                     |
-| ------------------- | ------------------------------------------------------------------- |
-| **Branche**         | `claude/phase-0-execution-iyvf4a`                                   |
-| **Dernier travail** | orchestration de l'optimisation — `git log -1` pour le détail       |
-| **Phase courante**  | 2 terminée ; **la 3 est la prochaine**                              |
-| **Bloqué sur**      | rien côté code — deux points attendent le fondateur (voir plus bas) |
+|                    |                                                                         |
+| ------------------ | ----------------------------------------------------------------------- |
+| **Branche**        | `claude/phase-0-execution-iyvf4a`                                       |
+| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche |
+| **Phase courante** | 2 terminée ; **la 3 est la prochaine**                                  |
+| **Bloqué sur**     | rien côté code — un seul point attend le fondateur (voir plus bas)      |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
@@ -26,8 +26,37 @@ remonter l'environnement pour le faire ?**
 | **3 — Mobile TSP** | **à démarrer**                                                      |
 | 4 à 7              | à faire                                                             |
 
-134 tests : 25 dans `@sira/shared`, 17 dans `tsp-core`, 76 côté API (dont 41
-de bout en bout), 16 sur le solveur VRP.
+**129 tests**, tous verts : 25 dans `@sira/shared`, 12 dans `tsp-core`, 76
+côté API (31 unitaires et 45 de bout en bout), 16 sur le solveur VRP.
+Couverture 94 % sur les services de l'API, seuil de 70 % appliqué en CI.
+
+Compter avec `git log --oneline origin/main..HEAD` plutôt que de se fier à ce
+tableau s'il paraît daté.
+
+---
+
+## Ce qui existe déjà
+
+À lire avant d'écrire quoi que ce soit : la moitié de ce qu'on croit devoir
+construire est déjà là.
+
+| Emplacement                | Contenu                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api`                 | NestJS + Prisma. 16 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation.                              |
+| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web. |
+| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                      |
+| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                  |
+| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM.                      |
+| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                           |
+| `.github/workflows/ci.yml` | 5 travaux : qualité, données, scripts, solveur VRP, API compilée.                                                                    |
+
+Trois conventions qui évitent de refaire le travail :
+
+- **Toute règle de validation vit dans `@sira/shared`**, jamais réécrite côté
+  client. Le format d'un numéro ivoirien s'y trouve déjà.
+- **Toute méthode de service prend `organizationId` en premier argument
+  obligatoire** — c'est ainsi que le cloisonnement tient.
+- **Toute décision structurante va dans `decisions.md` avant d'être codée.**
 
 ---
 
@@ -137,7 +166,7 @@ Points d'attention connus :
 
 ## Ce qui attend le fondateur
 
-**1. Autorisation réseau — clôt la Phase 0.**
+**Un seul point : l'autorisation réseau, qui clôt la Phase 0.**
 `download.geofabrik.de` et `download1.graphhopper.com` sont refusés par la
 politique d'egress (403 au CONNECT), re-testé plusieurs fois. Sans eux, ni
 extrait OSM d'Abidjan ni index de géocodage. Probablement une **nouvelle
@@ -148,9 +177,15 @@ bash infra/osrm/prepare.sh && bash infra/photon/prepare.sh
 pnpm infra:up && pnpm infra:smoke
 ```
 
-**2. Base d'adresses — tranché le 18/10/2026 : cloisonnée par organisation**,
-pour la sécurité. `organizationId` est désormais obligatoire en base et la
-suppression d'une organisation emporte ses adresses. Plus rien à décider.
+Le remède est dans les réglages de l'environnement cloud : menu de
+l'environnement dans la barre de titre, puis **Edit → Network access** — soit
+un niveau d'accès plus large, soit ces deux domaines sous « Allowed domains »
+en gardant cochée la case des gestionnaires de paquets. Documentation :
+<https://code.claude.com/docs/en/cloud-environments#network-access>
+
+_Déjà tranché, rien à redemander :_ la base d'adresses reste **cloisonnée par
+organisation** (18/10/2026, pour la sécurité). `organizationId` est obligatoire
+en base et la suppression d'une organisation emporte ses adresses.
 
 ---
 
