@@ -22,6 +22,97 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-25 — Ajout d'arrêt hors connexion : historique local, position, recherche en ligne
+
+**Contexte.** Le critère d'acceptation demande de créer une mission de 15
+arrêts en mode avion. La recherche d'adresse passe par l'API (Photon et base
+d'adresses) ; la carte, qui permettrait l'appui long, n'arrive qu'au lot 5.
+
+**Décision.** Trois sources, dans cet ordre : les arrêts déjà connus du
+téléphone (recherche `LIKE` dans SQLite sur libellé, adresse et description
+informelle — un livreur revient souvent chez les mêmes clients), la recherche
+de l'API quand le réseau répond, et la position courante (« je suis devant »).
+
+**Conséquence.** En mode avion, les clients déjà servis restent saisissables
+en quelques lettres. Un client jamais servi demande d'être sur place, ou le
+réseau, jusqu'à la carte du lot 5.
+
+---
+
+## 2026-10-25 — Matrices OSRM par l'API quand le réseau répond, sinon repli
+
+**Contexte.** `planRoute` accepte des matrices routées ; l'API expose déjà
+`POST /routing/table`.
+
+**Décision.** Avant d'optimiser, le mobile demande la matrice (durées et
+distances) avec un délai court de 5 s, puis bascule sans bruit sur
+l'estimation de repli. Une matrice contenant une case vide — couple de points
+qu'OSRM ne sait pas relier — est traitée comme une absence de réponse : le
+solveur exige une matrice complète.
+
+**Alternative écartée.** Router sur le téléphone : un extrait OSRM ne tient pas
+dans le budget de 60 Mo, et le serveur sait déjà le faire.
+
+---
+
+## 2026-10-25 — Synchronisation : file d'envoi d'abord, puis relecture
+
+**Contexte.** Le mobile doit fonctionner en mode avion et tout renvoyer à la
+reconnexion (roadmap 3.7), sans consommer données ni batterie quand rien n'a
+changé.
+
+**Décision.** SQLite (`expo-sqlite`) tient trois choses : les missions et
+arrêts tels que reçus, une file d'envoi (`outbox`) de mutations horodatées, et
+quelques métadonnées. Chaque saisie écrit dans la base locale **et** dans la
+file, dans la même transaction. Une synchronisation :
+
+1. vide la file dans l'ordre (FIFO : un arrêt suit la création de sa
+   mission). Réseau absent ou erreur 5xx : arrêt, nouvel essai plus tard. Refus
+   définitif (4xx) : l'entrée sort de la file et rejoint une liste de rejets
+   visible du livreur, sans bloquer les suivantes ;
+2. relit ensuite les missions, sauf celles qui ont encore des entrées en
+   attente, pour ne pas écraser une saisie locale par l'état serveur plus
+   ancien. Seules les missions actives (brouillon, planifiée, en cours) sont
+   relues en détail ; le téléphone ne garde que la première page de la liste
+   (50 missions), le reste est purgé.
+
+Déclencheurs : ouverture de l'app, retour du réseau, chaque saisie, et le
+geste « tirer pour rafraîchir ». Aucune scrutation périodique.
+
+Le SQL est écrit dans `src/core` contre une petite interface de pilote,
+testée sous Node avec `node:sqlite` ; l'adaptateur `expo-sqlite` reste une
+traduction d'appels sans logique.
+
+**Alternative écartée.** WatermelonDB ou une bibliothèque de synchronisation :
+un moteur et un protocole serveur à adopter pour trois types de mutations.
+
+---
+
+## 2026-10-25 — Identifiants générés par le client, création idempotente
+
+**Contexte.** Une mission créée hors connexion part dans la file d'envoi. Si
+le réseau tombe après que le serveur a enregistré la création mais avant que
+la réponse n'arrive, le téléphone rejouera la requête : sans précaution, la
+mission serait créée deux fois. Il faut aussi que les arrêts ajoutés hors
+connexion désignent une mission qui n'a pas encore d'identifiant serveur.
+
+**Décision.** Le mobile génère un UUID v4 (`expo-crypto`) pour chaque mission
+et chaque arrêt créés, et l'envoie dans `id`. L'API l'accepte en option sur
+`POST /missions` et `POST /missions/:id/stops` : si l'identifiant existe déjà
+**dans la même organisation** (et la même mission, pour un arrêt), elle
+renvoie l'existant ; s'il existe ailleurs, 409 sans rien révéler. Sans `id`,
+le comportement est inchangé.
+
+**Alternative écartée.** Des identifiants provisoires remplacés au retour du
+serveur : il faut réécrire la file et la base locale à chaque création, et le
+doublon sur réponse perdue reste possible. Une clé d'idempotence en en-tête
+demanderait une table de réponses mémorisées côté serveur.
+
+**Conséquence.** Un UUID v4 a 122 bits aléatoires : une collision fortuite
+entre organisations est négligeable, et le 409 la rend sans danger.
+
+---
+
 ## 2026-10-25 — Index Photon : épingler une version datée, vérifiée par MD5
 
 **Contexte.** La politique réseau laisse désormais passer
