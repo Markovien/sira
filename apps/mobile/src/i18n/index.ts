@@ -1,3 +1,4 @@
+import type { ErrorMessage } from '../core/errors';
 import { fr, type MessageKey, type Messages } from './fr';
 
 export type { MessageKey, Messages };
@@ -27,3 +28,40 @@ export function formatDistance(meters: number): string {
   const km = (meters / 1000).toFixed(meters < 10_000 ? 1 : 0).replace('.', ',');
   return t('units.kilometers', { value: km });
 }
+
+export function errorText(message: ErrorMessage): string {
+  return message.key === 'error.server'
+    ? t(message.key, { detail: message.detail })
+    : t(message.key);
+}
+
+/** « 14:05 » a l'heure d'Abidjan, qui est l'heure UTC (pas d'heure d'ete). */
+export function formatClock(date: Date): string {
+  const hh = String(date.getUTCHours()).padStart(2, '0');
+  const mm = String(date.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+/** « mardi 4 novembre », depuis la date de tournee serialisee a minuit UTC. */
+export function formatMissionDate(iso: string): string {
+  const date = new Date(iso);
+  return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+}
+
+// Ecrits en dur plutot que via Intl : Hermes n'embarque pas toujours les
+// donnees de locale, et `toLocaleDateString('fr-FR')` y retombe sur l'anglais.
+const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const MONTHS = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+];

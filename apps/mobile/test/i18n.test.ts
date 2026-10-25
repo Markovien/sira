@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatDistance, formatDuration, t } from '../src/i18n';
+import { ApiError, NetworkError } from '../src/core/api';
+import { describeError } from '../src/core/errors';
+import {
+  errorText,
+  formatClock,
+  formatDistance,
+  formatDuration,
+  formatMissionDate,
+  t,
+} from '../src/i18n';
 
 describe('t', () => {
   it('interpole les parametres', () => {
@@ -27,5 +36,20 @@ describe('formats', () => {
     [12_400, '12 km'],
   ])('%i m -> %s', (meters, text) => {
     expect(formatDistance(meters)).toBe(text);
+  });
+});
+
+describe('dates et erreurs', () => {
+  it('ecrit la date de tournee en francais', () => {
+    expect(formatMissionDate('2026-11-04T00:00:00.000Z')).toBe('mercredi 4 novembre');
+  });
+
+  it('donne l heure d Abidjan', () => {
+    expect(formatClock(new Date('2026-11-04T07:05:00Z'))).toBe('07:05');
+  });
+
+  it('traduit une erreur reseau et garde le detail d un refus serveur', () => {
+    expect(errorText(describeError(new NetworkError()))).toMatch(/Hors connexion/);
+    expect(errorText(describeError(new ApiError(409, 'Deja livre')))).toBe('Deja livre');
   });
 });

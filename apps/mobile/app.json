@@ -9,12 +9,27 @@
     "platforms": ["android", "ios"],
     "android": {
       "package": "ci.sira.app",
-      "permissions": []
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "ios": {
       "bundleIdentifier": "ci.sira.app"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SIRA utilise votre position pour calculer l'ordre de passage le plus court depuis l'endroit où vous êtes.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }
