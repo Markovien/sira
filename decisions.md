@@ -22,6 +22,84 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-25 — Un livreur ne liste que ses propres missions, côté serveur
+
+**Contexte.** `GET /missions` renvoie toutes les missions de l'organisation,
+quel que soit le rôle. L'app livreur pourrait filtrer en passant `driverId`,
+mais un filtre côté client n'est pas une règle : n'importe quel livreur
+d'une flotte lirait les tournées — adresses et téléphones des clients — de ses
+collègues.
+
+**Décision.** Pour le rôle `driver`, l'API force `driverId` à l'utilisateur
+connecté, sur la liste comme sur le détail (404 sur la mission d'un autre,
+comme pour une autre organisation). Dispatcheur et administrateur gardent la
+vue complète. Un livreur indépendant est administrateur de sa propre
+organisation : il voit tout, c'est-à-dire les siennes.
+
+**Conséquence.** Même principe que le cloisonnement par organisation : la
+règle vit à un seul endroit, côté serveur, et le client n'a rien à oublier.
+
+---
+
+## 2026-10-25 — Point de départ : une lecture GPS ponctuelle, au moment d'optimiser
+
+**Contexte.** Optimiser sur le téléphone demande un point de départ. La
+réponse `GET /missions/:id` n'inclut pas les coordonnées du dépôt, et la
+roadmap cite la « position GPS courante ».
+
+**Décision.** `expo-location`, une seule lecture de précision « équilibrée »
+au moment de l'appui sur « Optimiser » — aucun suivi, aucune tâche de fond. Si
+la permission est refusée ou la position indisponible, le départ est le
+premier arrêt de l'ordre courant, et l'écran le dit.
+
+**Alternative écartée.** Ajouter le dépôt à la réponse de l'API : un livreur
+qui reprend sa tournée en milieu de journée n'est pas au dépôt, et le
+re-calcul de l'ordre restant (lot 4) aura de toute façon besoin de la
+position. Le suivi échantillonné à 30 s de la tâche 3.8 viendra au lot 6.
+
+---
+
+## 2026-10-25 — Session : rester connecté en mode avion
+
+**Contexte.** L'app doit s'ouvrir et fonctionner hors connexion. Une session
+qui exigerait un appel réseau au démarrage renverrait le livreur à l'écran de
+connexion dans chaque zone blanche.
+
+**Décision.** Le jeton de rafraîchissement et le profil de l'utilisateur sont
+conservés dans `expo-secure-store` (Keystore Android). Le jeton d'accès, de
+15 min, ne vit qu'en mémoire. Au démarrage, la session est restaurée **sans
+réseau** à partir du stockage ; le jeton d'accès est obtenu au premier appel
+qui en a besoin. Un 401 déclenche un seul rafraîchissement à la fois — l'API
+révoque le jeton présenté, deux rafraîchissements concurrents se
+déconnecteraient l'un l'autre. Seul un refus du rafraîchissement lui-même
+termine la session.
+
+**Alternative écartée.** AsyncStorage : non chiffré, il exposerait un jeton
+valable 30 jours à toute sauvegarde ou à un téléphone rooté.
+
+---
+
+## 2026-10-25 — Les réponses de l'API sont validées par le mobile
+
+**Contexte.** `@sira/shared` ne décrit que les entrées de l'API. Le mobile va
+persister ce qu'il reçoit (SQLite, lot 3) : une réponse d'une forme
+inattendue — API plus récente, champ renommé — y entrerait sans bruit et
+casserait un écran des jours plus tard, hors connexion, sans moyen d'en
+retrouver l'origine.
+
+**Décision.** Des schémas de réponse (`authResponseSchema`, `missionSchema`,
+`stopSchema`, `missionListSchema`) rejoignent `@sira/shared`, et le client API
+mobile valide chaque réponse à la frontière. Les clés inconnues sont ignorées
+(comportement par défaut de Zod) : une API qui ajoute un champ ne casse pas un
+client plus ancien. Les dates restent des chaînes ISO, telles que reçues et
+telles qu'elles seront stockées.
+
+**Conséquence.** Le dashboard web (Phase 4) réutilisera les mêmes schémas. La
+création de mission est déplacée au lot 3 : hors connexion, elle doit passer
+par la file de synchronisation, qui n'existe pas encore.
+
+---
+
 ## 2026-10-25 — Build Android : EAS est un service externe, il remonte au fondateur
 
 **Contexte.** Le critère d'acceptation de la Phase 3 demande un « build EAS
