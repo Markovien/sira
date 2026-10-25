@@ -22,6 +22,137 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-10-25 — Build Android : EAS est un service externe, il remonte au fondateur
+
+**Contexte.** Le critère d'acceptation de la Phase 3 demande un « build EAS
+Android installable ». EAS Build est un service SaaS d'Expo : gratuit dans
+une limite de builds mensuels, payant au-delà, et il exige un compte Expo et
+l'envoi du code source sur leurs serveurs.
+
+**Décision.** Ne pas créer de compte ni configurer EAS sans accord du
+fondateur (règle 2 du cadrage, et publication externe). Le dépôt reste
+compatible EAS — `app.json` complet, aucun module hors Expo SDK sans plugin de
+configuration — et l'alternative sans service tiers reste ouverte :
+`expo prebuild` puis Gradle en local.
+
+**Conséquence.** Point ajouté à la liste « ce qui attend le fondateur » de
+`REPRISE.md`. Le code mobile avance sans attendre la réponse.
+
+---
+
+## 2026-10-25 — Navigation : une liste ordonnée de liens, essayés tour à tour
+
+**Contexte.** Le bouton « Y aller » délègue la navigation à l'app GPS du
+téléphone (décision d'architecture). Sur Android 11 et plus,
+`Linking.canOpenURL` répond `false` pour tout schéma non déclaré dans les
+`<queries>` du manifeste, ce qui demande un plugin de configuration natif.
+
+**Décision.** Une fonction pure construit la liste des liens candidats, dans
+l'ordre de préférence du livreur (Google Maps par défaut, OsmAnd, Waze), et se
+termine toujours par `geo:`, que tout Android sait ouvrir. L'écran tente
+`Linking.openURL` sur chacun et passe au suivant en cas d'échec, sans
+interroger `canOpenURL`.
+
+**Alternative écartée.** Déclarer les `<queries>` par plugin : du natif à
+maintenir pour un gain nul, l'échec d'`openURL` donnant la même information.
+
+**Conséquence.** La logique se teste en Node. Waze exige le réseau pour
+calculer son itinéraire ; Google Maps et OsmAnd peuvent naviguer hors-ligne si
+le livreur a téléchargé la carte — c'est pourquoi Waze n'est jamais le défaut.
+
+---
+
+## 2026-10-25 — Matrice hors-ligne dans `@sira/shared`, une vitesse par tournée
+
+**Contexte.** Hors connexion, le TSP embarqué a besoin d'une matrice de durées
+sans OSRM (roadmap 3.4). Les vitesses de repli et le facteur de détour existent
+déjà dans `@sira/shared/domain.ts`.
+
+**Décision.** `fallbackDurationMatrix(points, departure)` vit dans
+`@sira/shared` : distance haversine × 1,35, divisée par la vitesse de la
+tranche horaire du **départ**, appliquée à toute la tournée. L'API pourra s'en
+servir le jour où OSRM tombe. La tranche se déduit d'un jour et d'une heure
+locaux ; Abidjan étant en GMT toute l'année, sans heure d'été, l'heure locale
+est l'heure UTC — aucune base de fuseaux horaires à embarquer.
+
+Tranches : pointe du lundi au vendredi 7h-9h et 17h-20h ; fluide de 21h à 6h
+et le dimanche avant midi ; « hors pointe » sinon.
+
+**Alternative écartée.** Une vitesse par arc, selon l'heure d'arrivée estimée
+à chaque arrêt : la matrice dépendrait de l'ordre de visite, que le solveur
+cherche justement à déterminer. Gain de précision illusoire avec des vitesses
+de repli qui sont elles-mêmes des moyennes ; la Phase 5 apportera de vraies
+vitesses par segment.
+
+---
+
+## 2026-10-25 — Traductions : un dictionnaire typé, sans bibliothèque
+
+**Contexte.** La roadmap demande le français par défaut et « i18n prêt ». Une
+seule langue est prévue pour le pilote.
+
+**Décision.** Un objet `fr` dont le type sert de contrat ; toute autre langue
+devra le satisfaire, une clé manquante est donc une erreur de compilation.
+Une fonction `t(key, params)` interpole `{param}`. Ni i18next ni
+expo-localization.
+
+**Alternative écartée.** i18next : une dépendance, un format de fichier et un
+chargement asynchrone pour une seule langue. La migration reste triviale — les
+clés sont déjà plates.
+
+---
+
+## 2026-10-25 — Mobile : la logique en TypeScript pur, à part de l'interface
+
+**Contexte.** Le gros du risque de la Phase 3 est dans la logique — choix de
+la matrice, file de synchronisation, liens de navigation — et non dans les
+écrans. Or tout ce qui importe `react-native` ne s'exécute pas sous Vitest
+sans un environnement simulé lourd.
+
+**Décision.** `apps/mobile/src/core/` ne dépend que de `@sira/shared` et
+`@sira/tsp-core` — même contrainte que `tsp-core` : ni React Native ni API
+Node. Il est testé par Vitest en Node, comme les autres paquets. Les écrans
+(`app/`) restent minces et seront couverts par les parcours Maestro.
+
+**Conséquence.** Le stockage (SQLite) et le réseau sont injectés dans `core`
+par interfaces, ce qui permet de tester la synchronisation sans appareil.
+
+---
+
+## 2026-10-25 — Expo SDK 58 et expo-router, application montée à la main
+
+**Contexte.** Démarrage de `apps/mobile`. SDK 58 est la version stable
+courante (publiée le 29/09/2026, 19 correctifs depuis) ; la 57 sort de son
+cycle de maintenance.
+
+**Décision.** SDK 58, avec expo-router pour la navigation par fichiers. Le
+squelette est écrit à la main plutôt que généré par `create-expo-app`, dont les
+modèles embarquent écrans d'exemple, polices et images qu'il faudrait
+supprimer — chaque Mo compte contre le budget de 60 Mo. Les versions des
+modules natifs sont alignées par `expo install`, jamais choisies à la main.
+
+**Conséquence.** MapLibre React Native et expo-sqlite arrivent dans des lots
+suivants, chacun avec sa vérification de compatibilité avec le SDK.
+
+---
+
+## 2026-10-25 — Ouvrir la Phase 3 avec la Phase 0 toujours ouverte
+
+**Contexte.** Re-test du 25/10 : `download.geofabrik.de` et
+`download1.graphhopper.com` restent refusés (403 au CONNECT) par la politique
+réseau. Le fondateur a donné la consigne explicite de démarrer la Phase 3 dans
+ce cas. Les Phases 1 et 2 sont closes et vertes.
+
+**Décision.** Ouvrir la Phase 3, selon le même raisonnement que l'ouverture de
+la Phase 1 (18/10) : le mobile dépend de l'API et de `tsp-core`, vérifiés, et
+pas des données d'Abidjan. La carte hors-ligne (tâche 3.3) dépend elle aussi
+d'un extrait OSM ; elle sera traitée en dernier, et sur un jeu de tuiles
+réduit si la restriction persiste.
+
+**Conséquence.** La Phase 0 reste « non close » dans `CLAUDE.md`.
+
+---
+
 ## 2026-10-18 — Le cloisonnement descend au niveau de la base
 
 **Contexte.** Le fondateur tranche : la base d'adresses reste **cloisonnée par
