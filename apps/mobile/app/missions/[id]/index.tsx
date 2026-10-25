@@ -45,6 +45,11 @@ export default function MissionScreen() {
   const title =
     mission.label ?? t('mission.untitled', { date: formatMissionDate(mission.date) });
   const remaining = routeStopsOf(mission.stops);
+  // Un arret du plan a ete traite depuis : le plan affiche ne vaut plus pour
+  // la suite, un appui recalcule l'ordre des arrets restants depuis ici.
+  const stale =
+    plan !== null &&
+    plan.route.stops.some((p) => !remaining.some((stop) => stop.id === p.stopId));
   const canEdit =
     state.status === 'signedIn' && state.user.role !== 'driver' && mission.status === 'draft';
 
@@ -99,7 +104,13 @@ export default function MissionScreen() {
             {notice && <Message text={notice} tone="danger" />}
             {remaining.length > 0 && (
               <Button
-                label={t(optimizing ? 'mission.optimizing' : 'mission.optimize')}
+                label={t(
+                  optimizing
+                    ? 'mission.optimizing'
+                    : stale
+                      ? 'mission.reoptimize'
+                      : 'mission.optimize',
+                )}
                 onPress={() => void optimize()}
                 disabled={optimizing}
               />
@@ -120,7 +131,17 @@ export default function MissionScreen() {
           </View>
         }
         renderItem={({ item, index }) => (
-          <StopRow item={item} rank={index + 1} onGo={() => void goTo(item)} />
+          <StopRow
+            item={item}
+            rank={index + 1}
+            onGo={() => void goTo(item)}
+            onRecord={() =>
+              router.push({
+                pathname: '/missions/[id]/stops/[stopId]',
+                params: { id: mission.id, stopId: item.stop.id },
+              })
+            }
+          />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
@@ -152,10 +173,12 @@ function StopRow({
   item,
   rank,
   onGo,
+  onRecord,
 }: {
   item: DisplayedStop;
   rank: number;
   onGo: () => void;
+  onRecord: () => void;
 }) {
   const { stop, eta } = item;
   const pending = stop.status === 'pending';
@@ -172,7 +195,16 @@ function StopRow({
         {t(`stop.status.${stop.status}` satisfies MessageKey)}
         {eta ? ` · ${t('stop.eta', { time: formatClock(eta) })}` : ''}
       </Text>
-      {pending && <Button label={t('stop.goThere')} onPress={onGo} variant="secondary" />}
+      {pending && (
+        <View style={styles.actions}>
+          <View style={styles.action}>
+            <Button label={t('stop.goThere')} onPress={onGo} variant="secondary" />
+          </View>
+          <View style={styles.action}>
+            <Button label={t('stop.record')} onPress={onRecord} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -196,4 +228,6 @@ const styles = StyleSheet.create({
   stopText: { fontSize: typography.body, color: colors.text },
   stopHint: { fontSize: typography.body, color: colors.textMuted, fontStyle: 'italic' },
   separator: { height: 2, backgroundColor: colors.border },
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  action: { flex: 1 },
 });

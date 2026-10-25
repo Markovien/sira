@@ -15,7 +15,9 @@ import {
   type SyncEngine,
   type SyncOutcome,
 } from './core/sync';
+import { purgeProofs } from './core/proofs';
 import { onReconnect } from './platform/network';
+import { proofFiles } from './platform/proof-files';
 import { openSqliteDriver } from './platform/sqlite';
 import { useSession } from './session';
 
@@ -90,6 +92,8 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const db = createLocalDb(await openSqliteDriver());
       await db.migrate();
       await db.claimFor(userId);
+      // Preuves de plus de 30 jours, et fichiers laisses par une base videe.
+      await purgeProofs(db, proofFiles, new Date()).catch(() => 0);
       if (cancelled) return;
       const engine = createSyncEngine({ db, api });
       handlesRef.current = { db, engine };

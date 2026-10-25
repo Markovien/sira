@@ -9,8 +9,10 @@ import {
   View,
 } from 'react-native';
 import type { LocalMissionSummary } from '../src/core/local-db';
+import { purgeProofs } from '../src/core/proofs';
 import { useData, useLocal } from '../src/data';
 import { formatMissionDate, t, type MessageKey } from '../src/i18n';
+import { proofFiles } from '../src/platform/proof-files';
 import { useSession } from '../src/session';
 import { SyncBanner } from '../src/sync-banner';
 import { colors, spacing, touchTarget, typography } from '../src/theme';
@@ -34,7 +36,11 @@ export default function MissionsScreen() {
       {
         text: t('home.logout'),
         style: 'destructive',
-        onPress: () => void db.reset().then(logout),
+        onPress: () =>
+          void db
+            .reset()
+            .then(() => purgeProofs(db, proofFiles, new Date()))
+            .then(logout),
       },
     ]);
   }

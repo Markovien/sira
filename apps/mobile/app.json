@@ -9,7 +9,7 @@
     "platforms": ["android", "ios"],
     "android": {
       "package": "ci.sira.app",
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "CAMERA"],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -27,6 +27,14 @@
           "locationWhenInUsePermission": "SIRA utilise votre position pour calculer l'ordre de passage le plus court depuis l'endroit où vous êtes.",
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "SIRA utilise l'appareil photo pour la preuve de livraison. Les photos restent sur votre téléphone 30 jours.",
+          "photosPermission": false,
+          "microphonePermission": false
         }
       ]
     ],

@@ -27,6 +27,7 @@ function RootStack() {
         <Stack.Screen name="missions/new" />
         <Stack.Screen name="missions/[id]/index" />
         <Stack.Screen name="missions/[id]/add-stop" />
+        <Stack.Screen name="missions/[id]/stops/[stopId]" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="login" />
