@@ -1,0 +1,13 @@
+# Parcours e2e critiques de la Phase 3 (roadmap 3.9).
+#
+#   maestro test -e SIRA_PHONE=0799000001 -e SIRA_PASSWORD=... apps/mobile/.maestro
+#
+# Exige un emulateur ou un telephone avec l'APK installe, et une API joignable
+# (EXPO_PUBLIC_API_URL au build). Compte : un administrateur de son
+# organisation (livreur independant), seul a pouvoir creer des missions.
+# Non executes dans l'environnement de developpement cloud, sans emulateur
+# (decisions.md, 02/11/2026).
+flows:
+  - "*.yaml"
+excludeTags:
+  - helper

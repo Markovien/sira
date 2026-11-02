@@ -1,0 +1,31 @@
+# Execution de tournee hors connexion : une livraison, un echec motive, puis
+# le recalcul de l'ordre restant. Suppose le parcours 02 deja passe (la
+# mission « Tournee Maestro » existe sur le compte).
+appId: ci.sira.app
+---
+- runFlow: _login.yaml
+- extendedWaitUntil:
+    visible: "Tournee Maestro"
+    timeout: 20000
+- tapOn: "Tournee Maestro"
+- setAirplaneMode: enabled
+- tapOn:
+    text: "Saisir la livraison"
+    index: 0
+- tapOn: "Livré"
+- tapOn: "Valider : Livré"
+- tapOn:
+    text: "Saisir la livraison"
+    index: 0
+- tapOn: "Échec"
+- tapOn: "Client absent"
+- tapOn: "Valider : Échec"
+- assertVisible: "Livré"
+- assertVisible: "Échec"
+- tapOn: "Optimiser l’ordre"
+- assertVisible: "Durée estimée.*"
+- setAirplaneMode: disabled
+- back
+- extendedWaitUntil:
+    visible: "À jour à.*"
+    timeout: 60000

@@ -1,0 +1,41 @@
+# Critere d'acceptation de la Phase 3 : en mode avion, une mission de 15
+# arrets est creee et optimisee, puis tout se synchronise a la reconnexion.
+appId: ci.sira.app
+---
+- runFlow: _login.yaml
+- assertVisible: "Mes missions"
+- setAirplaneMode: enabled
+- setLocation:
+    latitude: 5.3251
+    longitude: -4.0212
+- tapOn: "Nouvelle mission"
+- tapOn:
+    id: "new-mission-label"
+- inputText: "Tournee Maestro"
+- hideKeyboard
+- tapOn: "Créer la mission"
+- assertVisible: "Pas encore envoyée"
+- repeat:
+    times: 15
+    commands:
+      - tapOn: "Ajouter un arrêt"
+      - tapOn: "Je suis sur place : utiliser ma position"
+      - assertVisible: "Lieu choisi.*"
+      - tapOn:
+          id: "stop-label"
+      - inputText: "Client"
+      - tapOn:
+          id: "stop-address"
+      - inputText: "Plateau, Abidjan"
+      - hideKeyboard
+      - tapOn: "Enregistrer l’arrêt"
+- assertVisible: "15. Client"
+- tapOn: "Optimiser l’ordre"
+- assertVisible: "Estimation hors connexion"
+- back
+- assertVisible: "16 saisie\\(s\\) en attente d’envoi"
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: "À jour à.*"
+    timeout: 60000
+- assertNotVisible: "Pas encore envoyée"

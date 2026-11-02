@@ -1,0 +1,15 @@
+# Un livreur se connecte, puis retrouve sa session sans reseau.
+appId: ci.sira.app
+---
+- runFlow: _login.yaml
+- assertVisible: "Mes missions"
+- extendedWaitUntil:
+    visible: "À jour à.*"
+    timeout: 20000
+# Session restauree depuis le Keystore, sans aucun appel reseau.
+- setAirplaneMode: enabled
+- stopApp
+- launchApp
+- assertVisible: "Mes missions"
+- assertNotVisible: "Se connecter"
+- setAirplaneMode: disabled

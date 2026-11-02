@@ -1,0 +1,14 @@
+appId: ci.sira.app
+tags:
+  - helper
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-phone"
+- inputText: ${SIRA_PHONE}
+- tapOn:
+    id: "login-password"
+- inputText: ${SIRA_PASSWORD}
+- hideKeyboard
+- tapOn: "Se connecter"

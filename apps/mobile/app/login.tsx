@@ -37,6 +37,7 @@ export default function LoginScreen() {
           style={styles.input}
           value={phone}
           onChangeText={setPhone}
+          testID="login-phone"
           placeholder={t('login.phonePlaceholder')}
           placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
@@ -50,6 +51,7 @@ export default function LoginScreen() {
           style={styles.input}
           value={password}
           onChangeText={setPassword}
+          testID="login-password"
           secureTextEntry
           autoComplete="current-password"
           onSubmitEditing={() => void submit()}

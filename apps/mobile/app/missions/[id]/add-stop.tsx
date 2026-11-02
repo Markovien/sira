@@ -157,9 +157,20 @@ export default function AddStopScreen() {
         </>
       )}
 
-      <Field label={t('addStop.label')} value={label} onChange={setLabel} />
-      <Field label={t('addStop.address')} value={address} onChange={setAddress} />
-      <Field label={t('addStop.informal')} value={informal} onChange={setInformal} multiline />
+      <Field label={t('addStop.label')} value={label} onChange={setLabel} testID="stop-label" />
+      <Field
+        label={t('addStop.address')}
+        value={address}
+        onChange={setAddress}
+        testID="stop-address"
+      />
+      <Field
+        label={t('addStop.informal')}
+        value={informal}
+        onChange={setInformal}
+        multiline
+        testID="stop-informal"
+      />
 
       <Button
         label={t('addStop.save')}
@@ -192,11 +203,14 @@ function Field({
   value,
   onChange,
   multiline = false,
+  testID,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
+  /** Cible des parcours Maestro (`.maestro/`). */
+  testID: string;
 }) {
   return (
     <View style={styles.field}>
@@ -206,6 +220,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         multiline={multiline}
+        testID={testID}
       />
     </View>
   );

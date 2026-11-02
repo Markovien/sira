@@ -36,6 +36,7 @@ export default function NewMissionScreen() {
         style={styles.input}
         value={label}
         onChangeText={setLabel}
+        testID="new-mission-label"
         placeholder={t('newMission.labelPlaceholder')}
         placeholderTextColor={colors.textMuted}
         maxLength={160}
