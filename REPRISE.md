@@ -11,24 +11,24 @@ remonter l'environnement pour le faire ?**
 
 ## En un coup d'œil
 
-|                    |                                                                                   |
-| ------------------ | --------------------------------------------------------------------------------- |
-| **Branche**        | `claude/phase-0-execution-iyvf4a`                                                 |
-| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche           |
-| **Phase courante** | **3 en cours** — lots 1 à 4 livrés ; restent la carte (5) et le build Android (6) |
-| **Bloqué sur**     | rien côté code — un point attend le fondateur (réseau Geofabrik)                  |
+|                    |                                                                         |
+| ------------------ | ----------------------------------------------------------------------- |
+| **Branche**        | `claude/phase-0-execution-iyvf4a`                                       |
+| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche |
+| **Phase courante** | **3 en cours** — lots 1 à 4 et 6 livrés ; reste la carte (5)            |
+| **Bloqué sur**     | rien côté code — un point attend le fondateur (réseau Geofabrik)        |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
 | 0 — Fondations     | Complète **sauf** le smoke test infra, bloqué par le réseau         |
 | 1 — Backend cœur   | ✅ 16 routes, couverture 94 %                                       |
 | 2 — Optimisation   | ✅ TSP 0 % d'écart sur berlin52, VRP 0,01 % sur C101, orchestration |
-| **3 — Mobile TSP** | **en cours** : lots 1 à 4 sur 6 livrés                              |
+| **3 — Mobile TSP** | **en cours** : 5 lots sur 6 livrés ; parcours Maestro à exécuter    |
 | 4 à 7              | à faire                                                             |
 
-**261 tests**, tous verts : 51 dans `@sira/shared`, 12 dans `tsp-core`, 107
-côté API (39 unitaires et 68 de bout en bout), 16 sur le solveur VRP, 75 sur
-la logique mobile.
+**265 tests**, tous verts : 51 dans `@sira/shared`, 12 dans `tsp-core`, 107
+côté API (39 unitaires et 68 de bout en bout), 16 sur le solveur VRP, 79 sur
+la logique mobile. Les 3 parcours Maestro sont écrits mais pas encore exécutés.
 Couverture 94 % sur les services de l'API, seuil de 70 % appliqué en CI.
 
 Compter avec `git log --oneline origin/main..HEAD` plutôt que de se fier à ce
@@ -111,6 +111,40 @@ export OSRM_URL="http://127.0.0.1:5000" VRP_SOLVER_URL="http://127.0.0.1:8000"
 
 `127.0.0.1` et non `localhost` : undici n'a pas de repli IPv4.
 
+### Build Android (APK de release)
+
+Une fois par conteneur, environ 5 min et 2 Go :
+
+```bash
+mkdir -p /opt/android-sdk/cmdline-tools && cd /tmp
+curl -sSfO https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip
+unzip -q commandlinetools-linux-16111833_latest.zip -d /opt/android-sdk/cmdline-tools
+mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
+export ANDROID_HOME=/opt/android-sdk
+yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null
+# Nouveaux identifiants avec « / », et android-37.0 et non android-37.
+$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms/android-37.0" \
+  "build-tools/37.0.0" "platform-tools" "ndk/27.1.12297006" "cmake/3.22.1"
+```
+
+**Maven Central répond 429** (trop de requêtes) à cet environnement dès les
+premières dizaines d'appels, et Gradle ne réessaie pas sur ce code. Remède
+propre à l'environnement, **hors dépôt** : un script d'init Gradle qui place
+en tête de tous les dépôts le miroir officiel de Google,
+`https://maven-central.storage-download.googleapis.com/maven2/` (contenu
+identique, SHA-1 vérifié). Il est rangé dans le dépôt mais n'est jamais
+appliqué de lui-même :
+
+```bash
+mkdir -p ~/.gradle/init.d && cp apps/mobile/scripts/gradle-central-mirror.init.gradle ~/.gradle/init.d/
+ANDROID_HOME=/opt/android-sdk bash apps/mobile/scripts/build-android.sh   # ~8 min a froid
+/opt/android-sdk/build-tools/37.0.0/aapt2 dump badging \
+  apps/mobile/android/app/build/outputs/apk/release/app-release.apk | grep uses-permission
+```
+
+Relire les permissions à chaque build (`decisions.md`, 02/11/2026). L'APK est
+signé avec la clé de debug : il sert à mesurer et à essayer, pas à distribuer.
+
 ---
 
 ## Vérifier avant de pousser
@@ -147,7 +181,7 @@ Deux pièges déjà rencontrés, qui ne se voient que là :
 - **Un test ignoré ressemble à un test réussi** : vérifier qu'aucun `↓`
   n'apparaît dans le rapport.
 
-## Prochaine étape : Phase 3, lot 6 (ou 5)
+## Prochaine étape : Phase 3, lot 5 (carte)
 
 La Phase 3 est découpée en lots, chacun livré vert et poussé :
 
@@ -157,18 +191,13 @@ La Phase 3 est découpée en lots, chacun livré vert et poussé :
 | 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions    | ✅ livré    |
 | 3   | SQLite locale, file de synchronisation, création de mission hors-ligne, matrices OSRM via l'API | ✅ livré    |
 | 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap       | ✅ livré    |
-| 5   | Carte MapLibre hors-ligne (PMTiles) — voir ci-dessous pour la source des tuiles                 | à faire     |
-| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours, build Android Gradle local                         | **suivant** |
+| 5   | Carte MapLibre hors-ligne (PMTiles) — voir ci-dessous pour la source des tuiles                 | **suivant** |
+| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours (écrits, non exécutés), APK Gradle local (47 Mo)    | ✅ livré    |
 
-Ordre conseillé : **6 avant 5**, parce que le 6 ne dépend de rien et que le
-5 dépend d'une source de tuiles à valider. Vérifié le 26/10/2026 :
+Après le lot 5, la Phase 3 ne sera close qu'une fois les **parcours Maestro
+exécutés** sur un émulateur ou un téléphone (`apps/mobile/.maestro/`) : cet
+environnement n'a pas de virtualisation matérielle (`/dev/kvm` absent).
 
-- **Build Android (lot 6)** — faisable ici : `dl.google.com` (SDK Android),
-  `services.gradle.org`, `maven.google.com` et Maven Central répondent, Java et
-  Gradle sont installés, `ANDROID_HOME` est vide (SDK à installer).
-  Arbitrage du fondateur : **Gradle local, sans EAS** (`decisions.md`,
-  26/10/2026). `expo prebuild` puis `./gradlew assembleRelease` ; mesurer
-  l'APK contre le budget de 60 Mo.
 - **Carte (lot 5)** — `download.geofabrik.de` reste refusé, mais
   `build.protomaps.com` répond. Piste à instruire avant toute décision :
   `pmtiles extract` sur un planet Protomaps, qui ne télécharge par requêtes
@@ -208,6 +237,9 @@ Ce qui est en place et à réutiliser :
   d'horloge reculée) ; l'API corrige et contrôle l'heure
   (`apps/api/src/missions/completion-time.ts`, fonction pure testée).
   Chaque requête porte `X-Device-Time`.
+- **GPS** : `useTourPosition(active)` (`src/tour-position.ts`) dans l'écran
+  d'une tournée, `tourPosition()` pour lire la position. Un seul
+  échantillonneur, 30 s / 50 m, premier plan uniquement ; rien n'est stocké.
 - **Preuves** : `src/platform/proof-files.ts` (photo 800 px, JPEG 0,5, dans le
   répertoire privé), table locale `proofs`, `purgeProofs()` à l'ouverture
   (30 jours, et fichiers orphelins). **Rien n'est envoyé au serveur** : c'est
@@ -285,6 +317,12 @@ _Déjà tranché, rien à redemander :_
   l'affaire du dashboard (Phase 4), et du stockage serveur pour les preuves.
 - Une mission ne passe pas d'elle-même `in_progress` quand le premier arrêt
   est traité, ni `completed` au dernier : à décider avec la Phase 4.
+- `react-native-reanimated`, `react-native-worklets` et
+  `react-native-gesture-handler` sont installés comme dépendances paires
+  d'Expo et liés dans l'APK (environ 5 Mo de bibliothèques natives) sans être
+  utilisés par nos écrans. Les exclure de l'autolinking allégerait l'APK, mais
+  demande de vérifier sur un appareil qu'expo-router ne les charge pas au
+  démarrage.
 - `planRoute` n'est déterministe que si la recherche converge avant son budget
   de temps : vérifié à 15 arrêts, 8 fois sur 10 à 20. Au-delà, deux appuis
   peuvent donner deux ordres de coût voisin. Remède le jour où cela gêne : un
