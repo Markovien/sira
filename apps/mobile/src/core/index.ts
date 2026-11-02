@@ -7,3 +7,4 @@ export * from './local-db';
 export * from './sync';
 export * from './dates';
 export * from './proofs';
+export * from './position-sampler';

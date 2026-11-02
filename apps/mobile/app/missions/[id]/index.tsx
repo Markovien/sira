@@ -19,7 +19,7 @@ import {
   t,
   type MessageKey,
 } from '../../../src/i18n';
-import { currentPosition } from '../../../src/platform/location';
+import { tourPosition, useTourPosition } from '../../../src/tour-position';
 import { useSession } from '../../../src/session';
 import { colors, spacing, typography } from '../../../src/theme';
 import { Button, Loading, Message } from '../../../src/ui';
@@ -38,6 +38,8 @@ export default function MissionScreen() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [optimizing, setOptimizing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // GPS a basse frequence tant que cette tournee a des arrets a livrer.
+  useTourPosition(mission != null && mission.stops.some((stop) => stop.status === 'pending'));
 
   if (mission === undefined) return <Loading />;
   if (mission === null) return <Message text={t('error.unknown')} tone="danger" />;
@@ -56,7 +58,7 @@ export default function MissionScreen() {
   async function optimize() {
     setOptimizing(true);
     setNotice(null);
-    const position = await currentPosition();
+    const position = await tourPosition();
     const start = startPoint(position, remaining);
     if (start) {
       const departure = new Date();
