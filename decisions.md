@@ -22,6 +22,65 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-11-02 — Parcours Maestro écrits ici, exécutés sur un poste avec émulateur
+
+**Contexte.** La roadmap demande trois parcours Maestro verts. Maestro pilote un
+émulateur ou un téléphone ; l'environnement d'exécution n'a pas de
+virtualisation matérielle (`/dev/kvm` absent), donc pas d'émulateur Android.
+
+**Décision.** Les trois parcours critiques sont écrits dans
+`apps/mobile/.maestro/` — connexion, mission hors-ligne de bout en bout,
+livraison avec motif d'échec — et les écrans portent les `testID` qu'ils
+visent. Ils ne sont pas déclarés verts tant qu'ils n'ont pas tourné sur un
+appareil. Les mêmes parcours ont été vérifiés dans Chromium contre l'API
+réelle aux lots 2 à 4 : c'est une preuve de logique, pas de rendu natif.
+
+**Conséquence.** Le critère « parcours e2e verts » de la Phase 3 reste ouvert
+jusqu'à une exécution sur un poste avec émulateur ou un téléphone branché.
+
+---
+
+## 2026-11-02 — APK : deux architectures ARM, signé en debug pour la vérification
+
+**Contexte.** Le budget est de 60 Mo hors tuiles. Un APK React Native
+universel embarque les bibliothèques natives de quatre architectures, dont
+deux (x86, x86_64) ne servent qu'aux émulateurs.
+
+**Décision.** Le build de release ne vise que `arm64-v8a` et `armeabi-v7a` :
+la totalité des téléphones Android d'entrée de gamme vendus en Côte d'Ivoire.
+L'APK produit dans cet environnement est signé avec la clé de debug du projet
+généré : il sert à mesurer la taille et à prouver que la chaîne fonctionne.
+La clé de production sera créée sur le poste de build du fondateur et n'entre
+jamais dans le dépôt.
+
+**Alternative écartée.** Un APK par architecture (`splits`) : plus léger encore,
+mais deux fichiers à distribuer à la main pour le pilote. Le Play Store, plus
+tard, découpera de lui-même à partir d'un AAB.
+
+---
+
+## 2026-11-02 — GPS : une seule source pendant la tournée, toutes les 30 s, sans trace
+
+**Contexte.** La roadmap fixe la sobriété : GPS échantillonné toutes les 30 s,
+en tournée uniquement. Jusqu'ici, chaque appui sur « Optimiser » faisait une
+lecture GPS ponctuelle. La collecte de traces (Phase 5) exige un consentement
+explicite et une anonymisation (cadrage, loi n° 2013-450) qui n'existent pas
+encore.
+
+**Décision.** Un échantillonneur unique, actif seulement quand l'écran d'une
+mission ayant des arrêts à livrer est ouvert et que l'app est au premier plan :
+`watchPositionAsync` à 30 s et 50 m minimum, précision « équilibrée ». Il
+garde la dernière position en mémoire ; l'optimisation la réutilise si elle a
+moins de 2 minutes, et ne déclenche une lecture que sinon. **Aucune position
+n'est stockée ni envoyée** : le suivi temps réel (Phase 4) et les traces
+(Phase 5) s'y brancheront avec leur consentement.
+
+**Alternative écartée.** La localisation en arrière-plan : permission
+« toujours » à justifier auprès de Google Play, tâche native, batterie — pour
+un besoin qui n'existe pas avant la Phase 4.
+
+---
+
 ## 2026-10-26 — Preuve de livraison : photo compressée et signature, gardées 30 jours sur le téléphone
 
 **Contexte.** Arbitrage du fondateur : la qualité de la photo n'est pas une
