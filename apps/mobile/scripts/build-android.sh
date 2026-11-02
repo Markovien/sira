@@ -24,6 +24,10 @@ if [[ -z "${EXPO_PUBLIC_API_URL:-}" ]]; then
 fi
 
 cd "${APP_DIR}"
+# prebuild reecrit les scripts de package.json (run:android) : on le remet
+# tel que commite, le projet natif genere ne doit rien changer au depot.
+cp package.json "${TMPDIR:-/tmp}/sira-mobile-package.json"
+trap 'cp "${TMPDIR:-/tmp}/sira-mobile-package.json" "${APP_DIR}/package.json"' EXIT
 EXPO_NO_TELEMETRY=1 CI=1 npx expo prebuild --platform android --no-install --clean
 
 cd android
