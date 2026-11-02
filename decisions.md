@@ -22,6 +22,27 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-11-02 — Permissions Android : on bloque celles qu'ajoutent les dépendances
+
+**Contexte.** Le premier APK de release, inspecté avec `aapt2`, déclare des
+permissions que l'app n'utilise pas, ajoutées par les manifestes des
+bibliothèques : `SYSTEM_ALERT_WINDOW` (affichage par-dessus les autres
+applications, que Google Play examine de près), `USE_BIOMETRIC` et
+`USE_FINGERPRINT` (`expo-secure-store`, pour un déverrouillage biométrique que
+l'app ne demande pas), `VIBRATE`.
+
+**Décision.** Elles rejoignent `android.blockedPermissions` dans `app.json`,
+avec le stockage externe déjà bloqué. Restent : localisation au premier plan,
+appareil photo, Internet et état du réseau (`expo-network`, pour détecter le
+retour de la connexion). Chaque build de release doit être relu avec
+`aapt2 dump badging` : une nouvelle dépendance peut en ajouter sans bruit.
+
+**Conséquence.** Un livreur qui installe l'APK ne se voit demander que ce que
+l'app utilise réellement — un argument de confiance, pas seulement de
+conformité.
+
+---
+
 ## 2026-11-02 — Parcours Maestro écrits ici, exécutés sur un poste avec émulateur
 
 **Contexte.** La roadmap demande trois parcours Maestro verts. Maestro pilote un
