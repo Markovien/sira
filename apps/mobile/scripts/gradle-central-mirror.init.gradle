@@ -1,0 +1,32 @@
+// Script d'init Gradle pour un environnement ou Maven Central repond 429
+// (limite de debit sur une adresse de sortie partagee). Inutile ailleurs, et
+// jamais applique par le build lui-meme : a copier explicitement.
+//
+//   mkdir -p ~/.gradle/init.d && cp apps/mobile/scripts/gradle-central-mirror.init.gradle ~/.gradle/init.d/
+//
+// Miroir officiel de Google, contenu identique (SHA-1 verifie a la main).
+// Place en tete partout : le portail des plugins Gradle redirige lui aussi
+// les dependances ordinaires vers Maven Central.
+def MIRROR = 'https://maven-central.storage-download.googleapis.com/maven2/'
+def prepend = { RepositoryHandler repos ->
+  def mirror = repos.maven { url MIRROR; name 'CentralMirror' }
+  repos.remove(mirror)
+  repos.addFirst(mirror)
+  repos.withType(MavenArtifactRepository).configureEach { r ->
+    if (r.url.toString().startsWith('https://repo.maven.apache.org/maven2')) r.url = MIRROR
+  }
+}
+beforeSettings { s ->
+  prepend(s.pluginManagement.repositories)
+  prepend(s.dependencyResolutionManagement.repositories)
+  s.gradle.allprojects { p ->
+    prepend(p.buildscript.repositories)
+    prepend(p.repositories)
+  }
+}
+// Declarer un depot de plugins retire le portail implicite : on le remet
+// quand les reglages n'en declarent aucun.
+settingsEvaluated { s ->
+  def repos = s.pluginManagement.repositories
+  if (!repos.any { it.name == 'Gradle Central Plugin Repository' }) repos.gradlePluginPortal()
+}
