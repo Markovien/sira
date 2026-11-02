@@ -34,7 +34,11 @@ cd android
 # Deux architectures ARM seulement : x86 et x86_64 ne servent qu'aux
 # emulateurs. Ressources inutilisees retirees ; GIF et WebP desactives, l'app
 # n'en affiche pas.
+# Reprises espacees : Maven Central repond 429 aux rafales de requetes d'un
+# premier build, notamment derriere une adresse de sortie partagee.
 ./gradlew assembleRelease \
+  -Dorg.gradle.internal.repository.max.retries=8 \
+  -Dorg.gradle.internal.repository.initial.backoff=3000 \
   -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
   -Pandroid.enableShrinkResourcesInReleaseBuilds=true \
   -Pexpo.gif.enabled=false \
