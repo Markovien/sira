@@ -109,6 +109,30 @@ export const geocodeSearchResponseSchema = z.object({
   photonAvailable: z.boolean(),
 });
 
+/** Adresses deja connues autour d'un point (`POST /geocoding/nearby`). */
+export const geocodeNearbyResponseSchema = z.array(geocodeCandidateSchema);
+
+/**
+ * Manifeste de la carte hors-ligne (decisions.md, 24/11/2026), produit par
+ * `infra/tiles/extract.sh`. Le telephone ne retelecharge l'archive que si
+ * `version` ou `md5` changent, et verifie `bytes` et `md5` avant de l'utiliser.
+ */
+export const tileManifestSchema = z.object({
+  version: z.string().min(1),
+  /** Nom du fichier, sans chemin : l'API le sert sous `/tiles/<file>`. */
+  file: z.string().regex(/^[a-z0-9-]+\.pmtiles$/),
+  bytes: z.number().int().positive(),
+  md5: z.string().regex(/^[0-9a-f]{32}$/),
+  maxZoom: z.number().int().min(0).max(15),
+  bbox: z.object({
+    minLat: z.number(),
+    minLon: z.number(),
+    maxLat: z.number(),
+    maxLon: z.number(),
+  }),
+  attribution: z.string().min(1),
+});
+
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type TokenPair = z.infer<typeof tokenPairSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
@@ -120,3 +144,4 @@ export type MissionDetail = z.infer<typeof missionDetailSchema>;
 export type TableResponse = z.infer<typeof tableResponseSchema>;
 export type GeocodeCandidate = z.infer<typeof geocodeCandidateSchema>;
 export type GeocodeSearchResponse = z.infer<typeof geocodeSearchResponseSchema>;
+export type TileManifest = z.infer<typeof tileManifestSchema>;

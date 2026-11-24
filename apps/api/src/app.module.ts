@@ -7,6 +7,7 @@ import { MissionsModule } from './missions/missions.module';
 import { OptimizeModule } from './optimize/optimize.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RoutingModule } from './routing/routing.module';
+import { TilesModule } from './tiles/tiles.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RoutingModule } from './routing/routing.module';
     OptimizeModule,
     GeocodingModule,
     RoutingModule,
+    TilesModule,
     HealthModule,
   ],
 })

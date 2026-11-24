@@ -1,6 +1,7 @@
 import {
   authResponseSchema,
   authUserSchema,
+  geocodeNearbyResponseSchema,
   geocodeSearchResponseSchema,
   loginSchema,
   missionDetailSchema,
@@ -8,15 +9,18 @@ import {
   normalizeIvorianPhone,
   stopSchema,
   tableResponseSchema,
+  tileManifestSchema,
   tokenPairSchema,
   type AuthUser,
   type Coordinates,
   type CreateMissionInput,
   type CreateStopInput,
+  type GeocodeCandidate,
   type GeocodeSearchResponse,
   type Stop,
   type MissionDetail,
   type MissionList,
+  type TileManifest,
   type UpdateStopInput,
 } from '@sira/shared';
 import { z, type ZodType } from 'zod';
@@ -298,6 +302,31 @@ export function createApiClient(options: ApiClientOptions) {
       return request(`/geocoding/search?${params.toString()}`, geocodeSearchResponseSchema, {
         timeoutMs: TABLE_TIMEOUT_MS,
       });
+    },
+
+    /** Adresses deja livrees pres d'un point : sert l'appui long sur la carte. */
+    nearbyAddresses(point: Coordinates): Promise<GeocodeCandidate[]> {
+      return request('/geocoding/nearby', geocodeNearbyResponseSchema, {
+        method: 'POST',
+        body: { lat: point.lat, lon: point.lon },
+        timeoutMs: TABLE_TIMEOUT_MS,
+      });
+    },
+
+    tileManifest(): Promise<TileManifest> {
+      return request('/tiles/manifest', tileManifestSchema, { timeoutMs: TABLE_TIMEOUT_MS });
+    },
+
+    /**
+     * Adresse et en-tetes pour telecharger un fichier de carte hors du client
+     * (le telechargement est natif, il ne passe pas par fetch). Le jeton est
+     * rafraichi d'abord s'il manque : l'archive ne se telecharge qu'en ligne.
+     */
+    async authorizedDownload(
+      path: string,
+    ): Promise<{ url: string; headers: Record<string, string> }> {
+      const token = accessToken ?? (await refresh());
+      return { url: `${baseUrl}${path}`, headers: { Authorization: `Bearer ${token}` } };
     },
 
     listMissions(): Promise<MissionList> {

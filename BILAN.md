@@ -17,8 +17,8 @@ trouve chaque chose. Pour la marche à suivre au quotidien, lire ensuite
 | **Pull request**          | aucune ouverte                                                           |
 | **Avance sur `main`**     | 57 commits au 24/11/2026 (`git log --oneline origin/main..HEAD`)         |
 | **CI GitHub**             | 6 travaux, tous verts sur le dernier commit poussé                       |
-| **Journal des décisions** | 53 entrées (la dernière en attente d'accord)                             |
-| **Tests**                 | 265, tous verts (détail plus bas)                                        |
+| **Journal des décisions** | 53 entrées, chacune écrite avant d'être appliquée                        |
+| **Tests**                 | 291, tous verts (détail plus bas)                                        |
 
 ---
 
@@ -29,7 +29,7 @@ trouve chaque chose. Pour la marche à suivre au quotidien, lire ensuite
 | 0 — Fondations     | **Non close**    | Tout fonctionne, sauf le routage sur la vraie carte d'Abidjan, bloqué par le réseau |
 | 1 — Backend cœur   | ✅ Terminée      | API missions complète, 94 % des services couverts                                   |
 | 2 — Optimisation   | ✅ Terminée      | TSP à 0 % de l'optimum (berlin52), VRP à 0,01 % (Solomon C101)                      |
-| 3 — Mobile livreur | **5 lots sur 6** | Restent la carte hors-ligne et l'essai sur un vrai téléphone                        |
+| 3 — Mobile livreur | **6 lots sur 6** | Code complet ; restent l'essai sur un vrai téléphone et les parcours Maestro        |
 | 4 — Web VRP        | À faire          | Dashboard flotte                                                                    |
 | 5 — Trafic         | À faire          | Re-planification dynamique                                                          |
 | 6 — Freemium       | À faire          | Paiement mobile money                                                               |
@@ -81,6 +81,9 @@ non officiel pour des données de production — `decisions.md`, 18/10/2026).
 
 Ajouts à l'API pendant la Phase 3 (avec leurs tests e2e) :
 
+- **carte hors-ligne** : `GET /tiles/manifest` et `GET /tiles/abidjan.pmtiles`,
+  authentifiés, avec ETag et requêtes de plage ;
+
 - un livreur ne voit et ne modifie que **ses** missions (faille corrigée) ;
 - création **idempotente** de missions et d'arrêts par UUID fourni par le
   client ; 409 si l'identifiant est pris ailleurs ;
@@ -100,14 +103,14 @@ testé sous Vitest en Node) ; les écrans (`apps/mobile/app/`) restent minces.
 
 ### Lots
 
-| Lot | Contenu                                                                                                 | État                          |
-| --- | ------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| 1   | Squelette Expo, thème contrasté, textes FR typés ; matrice hors-ligne ; `planRoute` ; liens « Y aller » | ✅                            |
-| 2   | Connexion persistante hors-ligne (Keystore), client API validé par Zod, liste et détail                 | ✅                            |
-| 3   | SQLite locale, file d'envoi, synchronisation, création de mission hors-ligne, matrices OSRM via l'API   | ✅                            |
-| 4   | Exécution de tournée : statuts, motifs, photo compressée, signature, recalcul de l'ordre restant        | ✅                            |
-| 5   | **Carte MapLibre hors-ligne**                                                                           | **à faire — prochaine étape** |
-| 6   | GPS 30 s, 3 parcours Maestro (écrits, non exécutés), APK Gradle local (47 Mo)                           | ✅                            |
+| Lot | Contenu                                                                                                 | État                     |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 1   | Squelette Expo, thème contrasté, textes FR typés ; matrice hors-ligne ; `planRoute` ; liens « Y aller » | ✅                       |
+| 2   | Connexion persistante hors-ligne (Keystore), client API validé par Zod, liste et détail                 | ✅                       |
+| 3   | SQLite locale, file d'envoi, synchronisation, création de mission hors-ligne, matrices OSRM via l'API   | ✅                       |
+| 4   | Exécution de tournée : statuts, motifs, photo compressée, signature, recalcul de l'ordre restant        | ✅                       |
+| 5   | Carte MapLibre hors-ligne : extrait Protomaps d'Abidjan servi par l'API, appui long pour ajouter        | ✅ (non vu sur appareil) |
+| 6   | GPS 30 s, 3 parcours Maestro (écrits, non exécutés), APK Gradle local (30 Mo)                           | ✅                       |
 
 ### Ce que fait l'application
 
@@ -131,6 +134,13 @@ testé sous Vitest en Node) ; les écrans (`apps/mobile/app/`) restent minces.
   30 jours à chaque ouverture.
 - **Anti-triche horaire** : le téléphone signale une horloge reculée
   (`clockWentBack`), le serveur corrige et borne l'heure.
+- **Carte hors-ligne** : extrait Protomaps du Grand Abidjan (7,2 Mo, zooms
+  0–14, OpenStreetMap sous ODbL) servi par l'API (`GET /tiles/*`), téléchargé
+  sur Wi-Fi ou à la demande, vérifié par taille et MD5, lu sur le disque par
+  MapLibre. Glyphes et sprite embarqués : aucune requête réseau à
+  l'affichage. Arrêts numérotés comme la liste, tracé des arrêts restants,
+  appui long pour ajouter un arrêt (adresses déjà livrées tout près
+  proposées en ligne).
 - **GPS** : un seul échantillonneur, 30 s / 50 m, précision équilibrée,
   premier plan, écran de tournée ouvert ; rien n'est stocké ni envoyé.
 - **Sécurité** : base locale vidée si un autre utilisateur se connecte, et à
@@ -140,13 +150,21 @@ testé sous Vitest en Node) ; les écrans (`apps/mobile/app/`) restent minces.
 
 - Construit en local avec Gradle (`apps/mobile/scripts/build-android.sh`),
   sans EAS, conformément à l'arbitrage du fondateur.
-- **47 Mo**, deux architectures ARM (`arm64-v8a`, `armeabi-v7a`).
+- **30 Mo**, deux architectures ARM (`arm64-v8a`, `armeabi-v7a`),
+  bibliothèques natives compressées : sans cela, MapLibre portait l'APK à
+  66 Mo (`decisions.md`, 24/11/2026).
 - Permissions : localisation au premier plan, appareil photo, Internet, état
   du réseau. Bloquées dans `app.json` : stockage externe,
   `SYSTEM_ALERT_WINDOW`, biométrie, vibration.
 - Signé avec la **clé de debug** : pour essayer, pas pour distribuer.
 
 ### Vérifications effectuées
+
+- **Carte** : style, archive réelle, glyphes et sprite rendus dans Chromium
+  avec MapLibre GL JS (même spécification de style que le moteur natif) —
+  fond d'Abidjan, noms accentués, arrêts et tracé, sans requête réseau ni
+  erreur. Ce rendu a révélé qu'une plage de glyphes manquante empêchait de
+  dessiner des tuiles entières ; corrigé avant tout essai sur appareil.
 
 - Critère d'acceptation joué dans Chromium (doublures web temporaires) contre
   l'API réelle : mission de 15 arrêts créée en mode avion sans aucun appel
@@ -161,12 +179,12 @@ testé sous Vitest en Node) ; les écrans (`apps/mobile/app/`) restent minces.
 
 | Paquet                  | Tests                                  |
 | ----------------------- | -------------------------------------- |
-| `@sira/shared`          | 51                                     |
+| `@sira/shared`          | 54                                     |
 | `@sira/tsp-core`        | 12                                     |
-| `apps/api`              | 107 (39 unitaires, 68 de bout en bout) |
+| `apps/api`              | 113 (39 unitaires, 74 de bout en bout) |
 | `services/vrp-solver`   | 16                                     |
-| `apps/mobile` (logique) | 79                                     |
-| **Total**               | **265**                                |
+| `apps/mobile` (logique) | 96                                     |
+| **Total**               | **291**                                |
 
 CI (`.github/workflows/ci.yml`) : qualité TS (format, build, lint, types,
 tests), jeu de données, scripts et docker-compose, solveur VRP, API compilée
@@ -195,14 +213,11 @@ d'un livreur aux tournées de ses collègues.
 
 ### Pour clore la Phase 3
 
-1. **Lot 5 — carte hors-ligne** (prochaine étape). Geofabrik étant refusé,
-   instruire Protomaps (`build.protomaps.com` répond) : `pmtiles extract` ne
-   télécharge par requêtes de plage que l'emprise de la Côte d'Ivoire.
-   Vérifier la **licence** (ODbL, attribution), le **poids** de l'extrait et
-   la **compatibilité de MapLibre React Native avec le SDK 58**, consigner la
-   décision dans `decisions.md` et la soumettre au fondateur **avant** de
-   coder. Fonctions attendues (roadmap 3.2/3.3) : affichage des arrêts et de
-   l'ordre, ajout d'arrêt par appui long.
+1. **Essayer la carte sur un téléphone** : le lot 5 est livré (`decisions.md`,
+   24/11/2026), mais le rendu par le moteur natif, l'appui long et le mode
+   avion n'ont été vus que dans Chromium (MapLibre GL JS, même style, même
+   archive). Préparer d'abord l'extrait sur le serveur :
+   `bash infra/tiles/extract.sh`.
 2. **Exécuter les 3 parcours Maestro** (`apps/mobile/.maestro/`) sur un
    émulateur ou un téléphone.
 3. **Installer l'APK sur un vrai téléphone** : appareil photo, GPS, Keystore
@@ -248,5 +263,4 @@ d'un livreur aux tournées de ses collègues.
 1. Autoriser `download.geofabrik.de` (clôture de la Phase 0).
 2. Un essai sur un téléphone Android, et si possible les parcours Maestro sur
    un poste avec émulateur.
-3. Valider la source de carte du lot 5, proposée dans `decisions.md` le
-   24/11/2026 (extrait Protomaps du Grand Abidjan, 7,2 Mo).
+3. Essayer la carte hors-ligne sur ce même téléphone (voir plus haut).

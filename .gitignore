@@ -59,3 +59,8 @@ pnpm-debug.log*
 # Sorties de `expo prebuild` : regenerees, jamais editees a la main.
 apps/mobile/android/
 apps/mobile/ios/
+
+# Carte hors-ligne (Phase 3, lot 5), regeneree par infra/tiles/extract.sh.
+infra/tiles/data/
+infra/tiles/.tools/
+*.pmtiles

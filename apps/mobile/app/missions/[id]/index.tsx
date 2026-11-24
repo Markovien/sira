@@ -11,6 +11,8 @@ import {
 import { navigationLinks, openFirst } from '../../../src/core/navigation';
 import { planRoute, type OnDeviceRoute, type RoutedMatrices } from '../../../src/core/optimize';
 import { useLocal } from '../../../src/data';
+import { useOfflineMap } from '../../../src/offline-map';
+import { StopsMap } from '../../../src/stops-map';
 import {
   formatClock,
   formatDistance,
@@ -38,6 +40,9 @@ export default function MissionScreen() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [optimizing, setOptimizing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Liste par defaut : la carte ne s'affiche (et ne consomme) qu'a la demande.
+  const [showMap, setShowMap] = useState(false);
+  const offlineMap = useOfflineMap();
   // GPS a basse frequence tant que cette tournee a des arrets a livrer.
   useTourPosition(mission != null && mission.stops.some((stop) => stop.status === 'pending'));
 
@@ -91,11 +96,46 @@ export default function MissionScreen() {
     if (!opened) setNotice(t('stop.noNavigationApp'));
   }
 
+  const shown = displayedStops(mission.stops, plan);
+  const toggle = (
+    <Button
+      label={t(showMap ? 'mission.showList' : 'mission.showMap')}
+      variant="secondary"
+      onPress={() => setShowMap((value) => !value)}
+    />
+  );
+
+  if (showMap) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title }} />
+        <View style={styles.mapHeader}>
+          {toggle}
+          <MapStatus />
+          {canEdit && <Text style={styles.planNote}>{t('map.longPressHint')}</Text>}
+        </View>
+        <StopsMap
+          stops={shown}
+          archiveUri={offlineMap.uri}
+          {...(canEdit
+            ? {
+                onLongPress: ({ lat, lon }) =>
+                  router.push({
+                    pathname: '/missions/[id]/add-stop',
+                    params: { id: mission.id, lat: String(lat), lon: String(lon) },
+                  }),
+              }
+            : {})}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title }} />
       <FlatList
-        data={displayedStops(mission.stops, plan)}
+        data={shown}
         keyExtractor={({ stop }) => stop.id}
         ListHeaderComponent={
           <View style={styles.summary}>
@@ -103,6 +143,7 @@ export default function MissionScreen() {
               <Text style={styles.pending}>{t('mission.notSynced')}</Text>
             )}
             {plan && <PlanSummary plan={plan} />}
+            {mission.stops.length > 0 && toggle}
             {notice && <Message text={notice} tone="danger" />}
             {remaining.length > 0 && (
               <Button
@@ -149,6 +190,27 @@ export default function MissionScreen() {
         contentContainerStyle={styles.list}
       />
     </View>
+  );
+}
+
+/** Ce qui manque a la carte, et comment l'obtenir. Rien si elle est installee. */
+function MapStatus() {
+  const { uri, busy, last, download } = useOfflineMap();
+  if (busy) return <Message text={t('map.downloading')} />;
+  if (uri) return null;
+  const hint =
+    last === 'waiting-for-wifi'
+      ? 'map.waitingForWifi'
+      : last === 'corrupt'
+        ? 'map.corrupt'
+        : last === 'unavailable'
+          ? 'map.unavailable'
+          : 'map.notDownloaded';
+  return (
+    <>
+      <Message text={t(hint)} />
+      <Button label={t('map.download')} onPress={() => void download()} />
+    </>
   );
 }
 
@@ -213,6 +275,7 @@ function StopRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  mapHeader: { padding: spacing.md, gap: spacing.sm },
   list: { padding: spacing.md },
   summary: { gap: spacing.md, marginBottom: spacing.md },
   pending: { fontSize: typography.body, fontWeight: '600', color: colors.warning },

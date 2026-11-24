@@ -37,6 +37,10 @@ export const envSchema = z.object({
   PHOTON_URL: z.string().url().default('http://localhost:2322'),
   VRP_SOLVER_URL: z.string().url().default('http://localhost:8000'),
   VRP_SOLVER_TIME_LIMIT_SECONDS: z.coerce.number().int().min(1).max(300).default(10),
+
+  // Repertoire ecrit par infra/tiles/extract.sh. Relatif au repertoire de
+  // lancement de l'API (apps/api avec pnpm --filter).
+  TILES_DIR: z.string().min(1).default('../../infra/tiles/data'),
 });
 
 export type Env = z.infer<typeof envSchema>;

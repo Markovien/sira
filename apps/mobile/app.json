@@ -40,7 +40,9 @@
           "photosPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native",
+      "./plugins/with-map-assets"
     ],
     "experiments": {
       "typedRoutes": true

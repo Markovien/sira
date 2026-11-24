@@ -4,6 +4,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { KnownPlace } from '../../../src/core/local-db';
+import { longPressPoint } from '../../../src/core/map-style';
 import { useData } from '../../../src/data';
 import { t } from '../../../src/i18n';
 import { currentPosition } from '../../../src/platform/location';
@@ -22,14 +23,23 @@ interface Place {
 const SEARCH_DEBOUNCE_MS = 500;
 
 export default function AddStopScreen() {
-  const { id: missionId } = useLocalSearchParams<{ id: string }>();
+  // lat/lon : arrivee depuis un appui long sur la carte.
+  const params = useLocalSearchParams<{ id: string; lat?: string; lon?: string }>();
+  const missionId = params.id;
+  const fromMap =
+    params.lat !== undefined && params.lon !== undefined
+      ? longPressPoint([Number(params.lon), Number(params.lat)])
+      : null;
   const { api } = useSession();
   const { db, written } = useData();
 
   const [query, setQuery] = useState('');
   const [known, setKnown] = useState<KnownPlace[]>([]);
   const [online, setOnline] = useState<GeocodeCandidate[] | 'unavailable' | null>(null);
-  const [place, setPlace] = useState<Place | null>(null);
+  const [place, setPlace] = useState<Place | null>(() =>
+    fromMap ? { ...fromMap, name: t('addStop.mapPoint') } : null,
+  );
+  const [nearby, setNearby] = useState<GeocodeCandidate[]>([]);
   const [label, setLabel] = useState('');
   const [address, setAddress] = useState('');
   const [informal, setInformal] = useState('');
@@ -58,6 +68,23 @@ export default function AddStopScreen() {
     };
   }, [query, db, api]);
 
+  // Point pose sur la carte : si une livraison a deja eu lieu tout pres, son
+  // adresse et sa position confirmee valent mieux que le point du doigt. Hors
+  // connexion, rien ne s'affiche et le point est garde tel quel.
+  const mapLat = fromMap?.lat;
+  const mapLon = fromMap?.lon;
+  useEffect(() => {
+    if (mapLat === undefined || mapLon === undefined) return;
+    let current = true;
+    api
+      .nearbyAddresses({ lat: mapLat, lon: mapLon })
+      .then((candidates) => current && setNearby(candidates))
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [api, mapLat, mapLon]);
+
   function chooseKnown(p: KnownPlace) {
     setPlace({ lat: p.lat, lon: p.lon, name: p.label });
     setLabel(p.label);
@@ -66,6 +93,7 @@ export default function AddStopScreen() {
   }
 
   function chooseCandidate(c: GeocodeCandidate) {
+    setNearby([]);
     setPlace({ lat: c.lat, lon: c.lon, name: c.label });
     setAddress([c.label, c.commune, c.city].filter(Boolean).join(', '));
   }
@@ -113,8 +141,20 @@ export default function AddStopScreen() {
           <Button
             label={t('addStop.change')}
             variant="secondary"
-            onPress={() => setPlace(null)}
+            onPress={() => {
+              setNearby([]);
+              setPlace(null);
+            }}
           />
+          {nearby.length > 0 && <Text style={styles.section}>{t('addStop.nearby')}</Text>}
+          {nearby.map((c) => (
+            <Choice
+              key={`${c.source}|${c.lat}|${c.lon}`}
+              title={c.label}
+              detail={[c.commune, c.city].filter(Boolean).join(', ')}
+              onPress={() => chooseCandidate(c)}
+            />
+          ))}
         </View>
       ) : (
         <>

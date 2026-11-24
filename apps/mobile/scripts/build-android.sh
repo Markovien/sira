@@ -36,13 +36,17 @@ cd android
 # n'en affiche pas.
 # Reprises espacees : Maven Central repond 429 aux rafales de requetes d'un
 # premier build, notamment derriere une adresse de sortie partagee.
+# Bibliotheques natives compressees (useLegacyPackaging) : avec la carte
+# MapLibre, l'APK passe de 66 a 29 Mo, et le telephone n'extrait a
+# l'installation que celles de son architecture (decisions.md, 24/11/2026).
 ./gradlew assembleRelease \
   -Dorg.gradle.internal.repository.max.retries=8 \
   -Dorg.gradle.internal.repository.initial.backoff=3000 \
   -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
   -Pandroid.enableShrinkResourcesInReleaseBuilds=true \
   -Pexpo.gif.enabled=false \
-  -Pexpo.webp.enabled=false
+  -Pexpo.webp.enabled=false \
+  -Pexpo.useLegacyPackaging=true
 
 APK="${APP_DIR}/android/app/build/outputs/apk/release/app-release.apk"
 size_bytes=$(stat -c %s "${APK}")

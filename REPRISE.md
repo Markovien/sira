@@ -20,21 +20,21 @@ remonter l'environnement pour le faire ?**
 | ------------------ | ------------------------------------------------------------------------------------ |
 | **Branche**        | `claude/phase-0-execution-iyvf4a`                                                    |
 | **Dépôt**          | `Markovien/sira` — pas de pull request, 57 commits d'avance sur `main` au 24/11/2026 |
-| **Phase courante** | **3 en cours** — lots 1 à 4 et 6 livrés ; reste la carte (5)                         |
-| **Bloqué sur**     | rien côté code — Geofabrik refusé (re-testé le 24/11/2026)                           |
+| **Phase courante** | **3 en cours** — 6 lots sur 6 livrés ; reste l'essai sur appareil et Maestro         |
+| **Bloqué sur**     | un appareil (pas de `/dev/kvm`) ; Geofabrik refusé (re-testé le 24/11/2026)          |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
 | 0 — Fondations     | Complète **sauf** le smoke test infra, bloqué par le réseau         |
-| 1 — Backend cœur   | ✅ 16 routes, couverture 94 %                                       |
+| 1 — Backend cœur   | ✅ 18 routes (dont la carte), couverture 95 %                       |
 | 2 — Optimisation   | ✅ TSP 0 % d'écart sur berlin52, VRP 0,01 % sur C101, orchestration |
-| **3 — Mobile TSP** | **en cours** : 5 lots sur 6 livrés ; parcours Maestro à exécuter    |
+| **3 — Mobile TSP** | **en cours** : 6 lots livrés ; appareil et Maestro à exécuter       |
 | 4 à 7              | à faire                                                             |
 
-**265 tests**, tous verts : 51 dans `@sira/shared`, 12 dans `tsp-core`, 107
-côté API (39 unitaires et 68 de bout en bout), 16 sur le solveur VRP, 79 sur
+**291 tests**, tous verts : 54 dans `@sira/shared`, 12 dans `tsp-core`, 113
+côté API (39 unitaires et 74 de bout en bout), 16 sur le solveur VRP, 96 sur
 la logique mobile. Les 3 parcours Maestro sont écrits mais pas encore exécutés.
-Couverture 94 % sur les services de l'API, seuil de 70 % appliqué en CI.
+Couverture 95 % sur les services de l'API, seuil de 70 % appliqué en CI.
 
 Compter avec `git log --oneline origin/main..HEAD` plutôt que de se fier à ce
 tableau s'il paraît daté.
@@ -46,16 +46,16 @@ tableau s'il paraît daté.
 À lire avant d'écrire quoi que ce soit : la moitié de ce qu'on croit devoir
 construire est déjà là.
 
-| Emplacement                | Contenu                                                                                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`                 | NestJS + Prisma. 16 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation.                                                                         |
-| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web.                                            |
-| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                                                                 |
-| `apps/mobile`              | Expo SDK 58 + expo-router. `src/core` (TS pur, testé en Node) : API, SQLite, synchro, optimisation, GPS, preuves. Écrans : connexion, missions, création, exécution. APK 47 Mo. |
-| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                                                             |
-| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM.                                                                 |
-| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                                                                      |
-| `.github/workflows/ci.yml` | 6 travaux : qualité, données, scripts, solveur VRP, API compilée, bundle mobile Android (< 8 Mo).                                                                               |
+| Emplacement                | Contenu                                                                                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`                 | NestJS + Prisma. 18 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation, carte hors-ligne.                                                              |
+| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web.                                                   |
+| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                                                                        |
+| `apps/mobile`              | Expo SDK 58 + expo-router. `src/core` (TS pur, testé en Node) : API, SQLite, synchro, optimisation, GPS, preuves. Écrans : connexion, missions, création, exécution, carte. APK 30 Mo. |
+| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                                                                    |
+| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM, extrait de carte (`infra/tiles`).                                      |
+| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                                                                             |
+| `.github/workflows/ci.yml` | 6 travaux : qualité, données, scripts, solveur VRP, API compilée, bundle mobile Android (< 8 Mo).                                                                                      |
 
 Trois conventions qui évitent de refaire le travail :
 
@@ -78,7 +78,7 @@ tests de bout en bout pour de mauvaises raisons.
 pnpm install --frozen-lockfile && pnpm build
 
 # 1. Démon Docker (absent au démarrage, le binaire est là)
-nohup dockerd > /tmp/dockerd.log 2>&1 & disown
+setsid nohup dockerd > /tmp/dockerd.log 2>&1 & disown
 until docker info >/dev/null 2>&1; do sleep 1; done
 
 # 2. PostgreSQL + PostGIS
@@ -116,6 +116,9 @@ export JWT_ACCESS_SECRET="secret-de-test-local-sans-valeur"
 export JWT_REFRESH_SECRET="autre-secret-de-test-local"
 export OSRM_URL="http://127.0.0.1:5000" VRP_SOLVER_URL="http://127.0.0.1:8000"
 ```
+
+Les tests de la carte (`tiles.e2e.test.ts`) écrivent leur propre extrait
+factice : `infra/tiles/extract.sh` n'est requis que pour servir la vraie carte.
 
 `127.0.0.1` et non `localhost` : undici n'a pas de repli IPv4.
 
@@ -188,32 +191,62 @@ Deux pièges déjà rencontrés, qui ne se voient que là :
   _type-aware_. D'où le nettoyage avant vérification.
 - **Un test ignoré ressemble à un test réussi** : vérifier qu'aucun `↓`
   n'apparaît dans le rapport.
+- **Ne rien ajouter à `apps/mobile/package.json` pendant un build Android** :
+  `build-android.sh` restaure à la fin la copie prise au départ, et efface
+  donc toute dépendance ajoutée entre-temps. C'est arrivé le 24/11/2026.
+- **Démon Docker** : lancé depuis une commande en arrière-plan, il peut
+  mourir avec elle. Le lancer avec `setsid nohup dockerd ... &`.
 
-## Prochaine étape : Phase 3, lot 5 (carte)
+## Prochaine étape : clore la Phase 3 sur un appareil
 
 La Phase 3 est découpée en lots, chacun livré vert et poussé :
 
-| Lot | Contenu                                                                                         | État        |
-| --- | ----------------------------------------------------------------------------------------------- | ----------- |
-| 1   | Squelette Expo, thème, i18n ; matrice hors-ligne (`@sira/shared`) ; `planRoute` ; deep links    | ✅ livré    |
-| 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions    | ✅ livré    |
-| 3   | SQLite locale, file de synchronisation, création de mission hors-ligne, matrices OSRM via l'API | ✅ livré    |
-| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap       | ✅ livré    |
-| 5   | Carte MapLibre hors-ligne (PMTiles) — voir ci-dessous pour la source des tuiles                 | **suivant** |
-| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours (écrits, non exécutés), APK Gradle local (47 Mo)    | ✅ livré    |
+| Lot | Contenu                                                                                         | État                          |
+| --- | ----------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1   | Squelette Expo, thème, i18n ; matrice hors-ligne (`@sira/shared`) ; `planRoute` ; deep links    | ✅ livré                      |
+| 2   | Connexion (expo-secure-store), client API typé par les schémas Zod, liste et détail missions    | ✅ livré                      |
+| 3   | SQLite locale, file de synchronisation, création de mission hors-ligne, matrices OSRM via l'API | ✅ livré                      |
+| 4   | Exécution de tournée : statuts, preuve (photo compressée, signature), re-calcul en un tap       | ✅ livré                      |
+| 5   | Carte MapLibre hors-ligne (PMTiles Protomaps du Grand Abidjan), appui long pour ajouter         | ✅ livré, non vu sur appareil |
+| 6   | Sobriété (GPS 30 s), Maestro sur 3 parcours (écrits, non exécutés), APK Gradle local (30 Mo)    | ✅ livré                      |
 
-Après le lot 5, la Phase 3 ne sera close qu'une fois les **parcours Maestro
-exécutés** sur un émulateur ou un téléphone (`apps/mobile/.maestro/`) : cet
-environnement n'a pas de virtualisation matérielle (`/dev/kvm` absent).
+Tout le code de la Phase 3 est écrit. Elle ne sera close qu'une fois les
+**parcours Maestro exécutés** et l'**APK essayé sur un vrai téléphone**
+(carte comprise) : cet environnement n'a pas de virtualisation matérielle
+(`/dev/kvm` absent). Ne jamais les déclarer verts sans exécution réelle.
 
-- **Carte (lot 5)** — proposition instruite et consignée le 24/11/2026
-  (`decisions.md`, « Carte hors-ligne ») : extrait Protomaps du Grand Abidjan,
-  zooms 0–14, **7,2 Mo**, servi par l'API, lu par MapLibre RN 11.5.1 en
-  `pmtiles://file://`. **En attente de l'accord du fondateur — ne rien coder
-  avant.** Après accord, première étape : un build Android mesuré (MapLibre
-  ajoute ~19 Mo de natif non compressé, budget 60 Mo). L'outil `pmtiles` se
-  compile depuis le proxy de modules Go (les releases GitHub sont refusées) :
-  `GOBIN=$PWD go install github.com/protomaps/go-pmtiles@v1.31.2`.
+### Carte hors-ligne (lot 5) — comment ça marche
+
+Décision complète, mesures et limites : `decisions.md`, 24/11/2026.
+
+- **Extrait** : `bash infra/tiles/extract.sh` (Go requis ; compile l'outil
+  officiel `pmtiles` depuis le proxy de modules Go, les releases GitHub étant
+  refusées). Produit `infra/tiles/data/abidjan.pmtiles` (7,2 Mo) et
+  `manifest.json`, ignorés par git. Build Protomaps épinglé dans le script
+  (`PROTOMAPS_BUILD`), à renouveler au plus une fois par mois : les builds
+  quotidiens ne restent que quelques jours en ligne.
+- **API** : `GET /tiles/manifest` et `GET /tiles/abidjan.pmtiles`
+  (authentifiés, ETag, requêtes de plage), lus dans `TILES_DIR`
+  (défaut `../../infra/tiles/data`). 404 tant qu'aucun extrait n'est préparé.
+- **Mobile** : `refreshOfflineMap` (`src/core/offline-map.ts`) vérifie le
+  manifeste à l'ouverture et au retour du réseau, ne télécharge que sur Wi-Fi
+  ou à la demande, contrôle taille et MD5, garde l'ancienne archive sinon.
+  Style dans `src/core/map-style.ts` (Protomaps sans commerces, glyphes
+  `asset://glyphs/...`, sprite `asset://sprites/light`). Écran : bouton
+  « Voir la carte » d'une mission ; appui long → écran d'ajout d'arrêt
+  pré-rempli, avec les adresses déjà livrées tout près (`POST /geocoding/nearby`).
+- **Glyphes et sprite** : `apps/mobile/assets/map/`, récupérés par
+  `bash apps/mobile/scripts/fetch-map-assets.sh`, copiés dans l'APK par
+  `apps/mobile/plugins/with-map-assets.js`, qui génère aussi un fichier vide
+  pour chaque plage Unicode non embarquée — sans eux, une seule plage
+  manquante empêche de dessiner toute la tuile.
+- **Vérifier le style sans téléphone** : MapLibre RN n'a pas de rendu web.
+  Harnais temporaire, hors dépôt (scratchpad) : `maplibre-gl` et `pmtiles`
+  (npm), un petit serveur Node avec requêtes de plage servant l'archive, les
+  glyphes (complétés par `fillMissingRanges` du plugin) et le sprite ; le
+  style vient de `offlineMapStyle()` avec des URL `http://` à la place de
+  `pmtiles://file://` et `asset://`. Playwright avec
+  `--use-gl=angle --use-angle=swiftshader`. Vérifié ainsi le 24/11/2026.
 
 Ce qui est en place et à réutiliser :
 
@@ -304,7 +337,7 @@ un niveau d'accès plus large, soit ce domaine sous « Allowed domains »
 en gardant cochée la case des gestionnaires de paquets. Documentation :
 <https://code.claude.com/docs/en/cloud-environments#network-access>
 
-**2. Un essai sur un vrai téléphone Android.** L'APK (47 Mo, clé de debug)
+**2. Un essai sur un vrai téléphone Android.** L'APK (30 Mo, clé de debug)
 n'a jamais été installé : appareil photo, GPS, Keystore et mode avion n'ont
 été vus qu'à travers des doublures web. Les 3 parcours Maestro
 (`apps/mobile/.maestro/`) attendent un poste avec émulateur ou un téléphone
@@ -313,10 +346,14 @@ branché — l'environnement cloud n'a pas de `/dev/kvm`.
 **3. La clé de signature de production**, à créer sur le poste du fondateur,
 hors dépôt, avant toute distribution.
 
-**4. Valider la source de carte du lot 5**, consignée dans `decisions.md`
-le 24/11/2026 : c'est ce qui débloque la suite de la Phase 3.
+**4. Essayer la carte sur le téléphone** : préparer l'extrait sur le serveur
+(`bash infra/tiles/extract.sh`), ouvrir une mission, « Voir la carte »,
+télécharger, puis passer en mode avion. Le rendu natif n'a jamais été vu.
 
 _Déjà tranché, rien à redemander :_
+
+- la **carte hors-ligne** : extrait Protomaps du Grand Abidjan servi par
+  l'API, bibliothèques natives compressées dans l'APK (24/11/2026) ;
 
 - la base d'adresses reste **cloisonnée par organisation** (18/10/2026) ;
 - **build Android en Gradle local**, sans EAS (26/10/2026) ;

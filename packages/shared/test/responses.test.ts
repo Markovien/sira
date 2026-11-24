@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { missionDetailSchema, missionListSchema } from '../src/responses.js';
+import {
+  missionDetailSchema,
+  missionListSchema,
+  tileManifestSchema,
+} from '../src/responses.js';
 
 const mission = {
   id: 'm1',
@@ -69,5 +73,31 @@ describe('missionDetailSchema', () => {
     expect(
       missionDetailSchema.safeParse({ ...mission, status: 'archived', stops: [] }).success,
     ).toBe(false);
+  });
+});
+
+describe('tileManifestSchema', () => {
+  const manifest = {
+    version: '20261124',
+    file: 'abidjan.pmtiles',
+    bytes: 7194507,
+    md5: '83cfac67a665e3095b24f49ef765fd7b',
+    sha256: '82b751803384ce0b8b2b723cd406fc118d16cb6d6eb4d3366860ab972d6cfb47',
+    maxZoom: 14,
+    bbox: { minLat: 5.15, minLon: -4.35, maxLat: 5.55, maxLon: -3.75 },
+    attribution: '© OpenStreetMap',
+    source: { protomapsBuild: '20261124' },
+  };
+
+  it('accepte le manifeste produit par infra/tiles/extract.sh', () => {
+    expect(tileManifestSchema.parse(manifest).file).toBe('abidjan.pmtiles');
+  });
+
+  it('refuse un nom de fichier qui sortirait du repertoire des tuiles', () => {
+    expect(tileManifestSchema.safeParse({ ...manifest, file: '../.env' }).success).toBe(false);
+  });
+
+  it('refuse une empreinte mal formee', () => {
+    expect(tileManifestSchema.safeParse({ ...manifest, md5: 'abc' }).success).toBe(false);
   });
 });

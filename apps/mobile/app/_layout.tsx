@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
 import { DataProvider } from '../src/data';
+import { OfflineMapProvider } from '../src/offline-map';
 import { SessionProvider, useSession } from '../src/session';
 import { colors, typography } from '../src/theme';
 import { Loading } from '../src/ui';
@@ -39,7 +40,11 @@ function RootStack() {
 }
 
 function WithData({ userId, children }: { userId: string; children: ReactNode }) {
-  return <DataProvider userId={userId}>{children}</DataProvider>;
+  return (
+    <DataProvider userId={userId}>
+      <OfflineMapProvider>{children}</OfflineMapProvider>
+    </DataProvider>
+  );
 }
 
 export default function RootLayout() {

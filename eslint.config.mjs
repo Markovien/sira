@@ -39,6 +39,18 @@ export default tseslint.config(
     },
   },
   {
+    // Plugins de configuration Expo : charges par Node en CommonJS au moment
+    // de `expo prebuild`, jamais par l'app. `require` y est la norme.
+    files: ['apps/mobile/plugins/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: { require: 'readonly', module: 'writable' },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     // NestJS lit les types des parametres de constructeur a l'execution, via
     // les metadonnees de decorateurs. Un `import type` est efface a la
     // compilation : la metadonnee devient `Object` et l'injection echoue au

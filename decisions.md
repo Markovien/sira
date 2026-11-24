@@ -22,10 +22,11 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
-## 2026-11-24 — Carte hors-ligne : extrait Protomaps du Grand Abidjan, servi par notre API _(proposée, en attente du fondateur)_
+## 2026-11-24 — Carte hors-ligne : extrait Protomaps du Grand Abidjan, servi par notre API
 
-**Statut.** Proposition soumise au fondateur : c'est une nouvelle source de
-données de production. **Rien n'est codé avant son accord.**
+**Statut.** Proposée le 24/11/2026, **validée par le fondateur le même jour**,
+y compris le remède 2 ci-dessous (bibliothèques natives compressées) si le
+budget de l'APK l'exige.
 
 **Contexte.** Le lot 5 de la Phase 3 demande une carte utilisable en mode
 avion : arrêts, ordre de passage, ajout d'arrêt par appui long.
@@ -116,6 +117,53 @@ Remèdes, dans l'ordre, chacun mesuré par un build :
 
 La première étape du lot est donc un build mesuré ; si le budget ne tient
 pas, je reviens vers le fondateur avant d'aller plus loin.
+
+**Mise en œuvre et mesures (24/11/2026, après accord).**
+
+- **Build mesuré** : avec MapLibre lié, l'APK pèse **66 Mo** (bibliothèques
+  natives non compressées), comme prévu. Le remède 2, validé par le
+  fondateur, ramène l'APK à **29 Mo** (`-Pexpo.useLegacyPackaging=true` dans
+  `build-android.sh`). Le remède 1 n'a pas été nécessaire ; la dette
+  `reanimated`/`worklets`/`gesture-handler` reste notée.
+- **Correction de mon estimation** : le surcoût de stockage n'existe pas. Le
+  téléphone n'extrait que les bibliothèques de son architecture (36 Mo en
+  arm64), alors qu'un APK non compressé garde les deux architectures :
+  l'app installée occupe ~67 Mo au lieu de ~70.
+- **Permissions** : inchangées, à `ACCESS_WIFI_STATE` près, permission
+  « normale » (sans demande au livreur) déclarée à la fois par MapLibre et par
+  `expo-network`.
+- **Vérification de l'archive** : taille et **MD5**, calculés nativement par
+  `expo-file-system` (`digest('MD5')`) — les 7 Mo ne passent jamais par le
+  JavaScript. Le SHA-256 reste dans le manifeste pour la traçabilité côté
+  serveur. Le MD5 suffit ici : il détecte un téléchargement tronqué ou altéré
+  en route, le transport étant déjà authentifié et chiffré.
+- **Pas de reprise côté téléphone** : l'API accepte les requêtes de plage
+  (testé), mais le mobile retélécharge l'archive entière en cas de coupure —
+  l'API de reprise d'`expo-file-system` est dépréciée, et 7 Mo une fois par
+  mois ne la justifient pas. À reprendre si le terrain montre des échecs
+  répétés.
+- **Sprite embarqué** : contrairement à la proposition, le sprite Protomaps
+  (52 Ko, MIT) est embarqué — il porte les **flèches de sens unique**, utiles
+  à un livreur. La couche des commerces (`pois`) reste exclue.
+- **Glyphes** : la proposition (3 polices, plages 0–511) était insuffisante.
+  Le style a été rendu dans Chromium avec MapLibre GL JS (même spécification
+  que le moteur natif) sur l'archive réelle : une seule plage absente
+  (7424–7679, demandée par un nom de l'extrait) suffisait à **empêcher le
+  dessin de toute la tuile**. L'extrait d'Abidjan contient des noms dans une
+  centaine de plages Unicode ; le jeu complet pèse ~7 Mo par police. Retenu :
+  - glyphes réels pour les écritures latines de l'extrait (0–255, 256–511,
+    512–767, 768–1023, 7680–7935, 8192–8447), en Noto Sans **Regular et
+    Medium** — l'italique est ramené au régulier : 1,3 Mo avant compression ;
+  - un **fichier vide** pour chacune des autres plages, généré au build par
+    `apps/mobile/plugins/with-map-assets.js` : aucune requête de glyphe
+    n'échoue, et les rares noms en écriture non latine ne s'affichent pas.
+    Récupérés par `apps/mobile/scripts/fetch-map-assets.sh`, commités.
+- **La WebView n'est plus une alternative à garder** : le budget tient.
+- **Non vérifié, faute d'appareil** (pas de `/dev/kvm`) : le rendu par le
+  moteur **natif** (`pmtiles://file://`, `asset://`), l'appui long, le
+  téléchargement réel et le mode avion sur Android. Le style, l'archive, les
+  glyphes et le sprite sont vérifiés dans Chromium avec MapLibre GL JS ; la
+  logique par les tests ; l'APK par le build.
 
 **Alternatives écartées.**
 

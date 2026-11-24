@@ -8,3 +8,5 @@ export * from './sync';
 export * from './dates';
 export * from './proofs';
 export * from './position-sampler';
+export * from './offline-map';
+export * from './map-style';

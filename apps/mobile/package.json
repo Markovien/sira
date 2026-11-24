@@ -14,6 +14,9 @@
   "dependencies": {
     "@expo/log-box": "~58.0.13",
     "@expo/metro-runtime": "~58.0.15",
+    "@maplibre/maplibre-gl-style-spec": "26.4.4",
+    "@maplibre/maplibre-react-native": "11.5.1",
+    "@protomaps/basemaps": "5.7.2",
     "@sira/shared": "workspace:*",
     "@sira/tsp-core": "workspace:*",
     "expo": "~58.0.19",
@@ -37,6 +40,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/geojson": "^7946.0.16",
     "@types/react": "~19.3.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
