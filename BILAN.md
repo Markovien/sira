@@ -17,7 +17,7 @@ trouve chaque chose. Pour la marche à suivre au quotidien, lire ensuite
 | **Pull request**          | aucune ouverte                                                           |
 | **Avance sur `main`**     | 57 commits au 24/11/2026 (`git log --oneline origin/main..HEAD`)         |
 | **CI GitHub**             | 6 travaux, tous verts sur le dernier commit poussé                       |
-| **Journal des décisions** | 52 entrées, chacune écrite avant d'être appliquée                        |
+| **Journal des décisions** | 53 entrées (la dernière en attente d'accord)                             |
 | **Tests**                 | 265, tous verts (détail plus bas)                                        |
 
 ---
@@ -248,4 +248,5 @@ d'un livreur aux tournées de ses collègues.
 1. Autoriser `download.geofabrik.de` (clôture de la Phase 0).
 2. Un essai sur un téléphone Android, et si possible les parcours Maestro sur
    un poste avec émulateur.
-3. Plus tard : valider la source de carte proposée pour le lot 5.
+3. Valider la source de carte du lot 5, proposée dans `decisions.md` le
+   24/11/2026 (extrait Protomaps du Grand Abidjan, 7,2 Mo).

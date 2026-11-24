@@ -206,11 +206,14 @@ Après le lot 5, la Phase 3 ne sera close qu'une fois les **parcours Maestro
 exécutés** sur un émulateur ou un téléphone (`apps/mobile/.maestro/`) : cet
 environnement n'a pas de virtualisation matérielle (`/dev/kvm` absent).
 
-- **Carte (lot 5)** — `download.geofabrik.de` reste refusé, mais
-  `build.protomaps.com` répond. Piste à instruire avant toute décision :
-  `pmtiles extract` sur un planet Protomaps, qui ne télécharge par requêtes
-  de plage que l'emprise de la Côte d'Ivoire. Vérifier la licence (ODbL), le
-  poids de l'extrait et la compatibilité MapLibre RN avec le SDK 58.
+- **Carte (lot 5)** — proposition instruite et consignée le 24/11/2026
+  (`decisions.md`, « Carte hors-ligne ») : extrait Protomaps du Grand Abidjan,
+  zooms 0–14, **7,2 Mo**, servi par l'API, lu par MapLibre RN 11.5.1 en
+  `pmtiles://file://`. **En attente de l'accord du fondateur — ne rien coder
+  avant.** Après accord, première étape : un build Android mesuré (MapLibre
+  ajoute ~19 Mo de natif non compressé, budget 60 Mo). L'outil `pmtiles` se
+  compile depuis le proxy de modules Go (les releases GitHub sont refusées) :
+  `GOBIN=$PWD go install github.com/protomaps/go-pmtiles@v1.31.2`.
 
 Ce qui est en place et à réutiliser :
 
@@ -310,8 +313,8 @@ branché — l'environnement cloud n'a pas de `/dev/kvm`.
 **3. La clé de signature de production**, à créer sur le poste du fondateur,
 hors dépôt, avant toute distribution.
 
-**4. Plus tard : valider la source de carte du lot 5**, une fois la
-proposition consignée dans `decisions.md`.
+**4. Valider la source de carte du lot 5**, consignée dans `decisions.md`
+le 24/11/2026 : c'est ce qui débloque la suite de la Phase 3.
 
 _Déjà tranché, rien à redemander :_
 

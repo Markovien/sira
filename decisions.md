@@ -22,6 +22,117 @@ _pourquoi_ ils ont été pris et ce qu'ils coûtent.
 
 ---
 
+## 2026-11-24 — Carte hors-ligne : extrait Protomaps du Grand Abidjan, servi par notre API _(proposée, en attente du fondateur)_
+
+**Statut.** Proposition soumise au fondateur : c'est une nouvelle source de
+données de production. **Rien n'est codé avant son accord.**
+
+**Contexte.** Le lot 5 de la Phase 3 demande une carte utilisable en mode
+avion : arrêts, ordre de passage, ajout d'arrêt par appui long.
+`download.geofabrik.de` reste refusé par la politique réseau (re-testé le
+24/11/2026, connexion réinitialisée) ; `build.protomaps.com` répond.
+
+**Ce qui a été mesuré (24/11/2026, par exécution).**
+
+- **Source** : build quotidien Protomaps `20261124.pmtiles` (planet, MVT,
+  zooms 0–15, OSM répliqué au 24/11/2026 04:00 UTC, schéma basemap 4.15.2).
+- **Outil** : `pmtiles` officiel (go-pmtiles v1.31.2), compilé depuis le proxy
+  de modules Go — les releases GitHub sont refusées par la politique réseau.
+  `pmtiles extract` ne lit que les plages utiles du planet (~100 requêtes).
+- **Poids des extraits** (archive produite) :
+
+  | Emprise             | Zooms | Poids      |
+  | ------------------- | ----- | ---------- |
+  | `COTE_DIVOIRE_BBOX` | 0–15  | 225 Mo     |
+  | `COTE_DIVOIRE_BBOX` | 0–14  | 101 Mo     |
+  | `COTE_DIVOIRE_BBOX` | 0–10  | 4,6 Mo     |
+  | **`ABIDJAN_BBOX`**  | 0–14  | **7,2 Mo** |
+  | `ABIDJAN_BBOX`      | 0–15  | ~20 Mo     |
+
+  L'extrait d'Abidjan au zoom 14 a été réellement téléchargé et relu
+  (`pmtiles show`). MapLibre sur-zoome les tuiles vectorielles : le zoom 14
+  reste net au niveau de la rue.
+
+- **MapLibre React Native 11.5.1** (dernière, MIT) : pairs `expo >= 54`,
+  `react-native >= 0.80`, `react >= 19.1` — tous satisfaits (SDK 58, RN 0.88,
+  React 19.3). Composants Fabric (nouvelle architecture), plugin Expo fourni.
+  Moteur natif MapLibre Android 13.6.1, qui contient `PMTilesFileSource` et
+  accepte `pmtiles://` sur `file://` : l'archive se lit directement sur le
+  disque, sans serveur de tuiles local. **Compatibilité non prouvée par un
+  build** : elle le sera à la première étape du lot.
+- **Poids natif** : `libmaplibre.so` pèse 10,8 Mo (arm64-v8a) + 7,9 Mo
+  (armeabi-v7a) = **18,7 Mo non compressés**, 7 Mo compressés.
+
+**Licences.**
+
+| Élément                         | Licence        | Obligation                                                                               |
+| ------------------------------- | -------------- | ---------------------------------------------------------------------------------------- |
+| Données (OpenStreetMap)         | ODbL 1.0       | Mention « © OpenStreetMap » visible sur la carte ; l'extrait non modifié reste sous ODbL |
+| Natural Earth (basses échelles) | Domaine public | Aucune                                                                                   |
+| Style `@protomaps/basemaps` 5.7 | BSD-3-Clause   | Mention dans l'écran « À propos »                                                        |
+| Polices Noto Sans (glyphes PBF) | SIL OFL 1.1    | Mention ; embarquées telles quelles                                                      |
+| Pictogrammes (sprites)          | MIT (tangrams) | **Non utilisés** : nos arrêts ont leurs propres marqueurs                                |
+| MapLibre RN / MapLibre Native   | MIT / BSD-2    | Mention dans l'écran « À propos »                                                        |
+
+Aucun coût, aucune clé d'API, aucun compte.
+
+**Décision proposée.**
+
+1. **Emprise** : `ABIDJAN_BBOX`, zooms 0–14, **7,2 Mo** — le pilote est à
+   Abidjan. La Côte d'Ivoire entière (101 Mo) est hors de proportion pour un
+   forfait de livreur ; une vue d'ensemble du pays (0–10, 4,6 Mo) pourra
+   s'ajouter quand la flotte sortira d'Abidjan.
+2. **Production de l'extrait** : un script `infra/tiles/extract.sh` épingle un
+   build daté et vérifie son `b3sum` publié, puis écrit l'archive, sa taille
+   et son SHA-256 dans un manifeste. Régénéré à la main, au plus une fois par
+   mois. Les builds quotidiens Protomaps ne sont conservés que quelques jours
+   et ne sont pas faits pour être appelés en production : **jamais d'appel
+   direct depuis le téléphone**.
+3. **Distribution** : l'API sert l'archive et son manifeste
+   (`GET /tiles/manifest`, `GET /tiles/abidjan.pmtiles`, authentifiés). Le
+   téléphone la télécharge une fois, de préférence en Wi-Fi, avec reprise,
+   vérifie le SHA-256, la range dans son répertoire privé, et ne la
+   re-télécharge que si le manifeste change. Coût serveur : 7 Mo par livreur
+   et par mois.
+4. **Style** : généré par `@protomaps/basemaps` (thème clair, contrasté pour le
+   plein soleil), sans pictogrammes ; glyphes Noto Sans Regular et Medium,
+   plages 0–255 et 256–511 (français compris), **embarqués dans l'APK**
+   (~300 Ko). Carte entièrement locale : aucune requête réseau à l'affichage.
+5. **Sans tuiles** (pas encore téléchargées) : la liste ordonnée reste
+   l'écran principal ; la carte affiche les arrêts sur fond uni. Rien
+   d'indispensable ne dépend de la carte.
+
+**Impact sur l'APK — le point à surveiller.** Budget : 60 Mo hors tuiles ;
+APK actuel : 47 Mo. Si les bibliothèques natives sont rangées non compressées
+(défaut d'Expo), MapLibre ajoute ~19 Mo → **~66 Mo, au-dessus du budget**.
+Remèdes, dans l'ordre, chacun mesuré par un build :
+
+1. retirer de l'autolinking `react-native-reanimated`, `-worklets` et
+   `-gesture-handler`, liés sans être utilisés (~5 Mo, dette déjà notée) ;
+2. compresser les bibliothèques natives dans l'APK (`useLegacyPackaging`) :
+   MapLibre n'ajoute alors que ~7 Mo au téléchargement, au prix d'une
+   décompression à l'installation (~19 Mo de stockage en plus sur le
+   téléphone).
+
+La première étape du lot est donc un build mesuré ; si le budget ne tient
+pas, je reviens vers le fondateur avant d'aller plus loin.
+
+**Alternatives écartées.**
+
+- **Tuiles raster** (OSM Carto ou équivalent) : 5 à 10 fois plus lourdes à
+  emprise égale, et les serveurs publics d'OSM interdisent le téléchargement
+  en masse.
+- **Carte dans une WebView** (`maplibre-gl` JS + `pmtiles`) : ~1 Mo au lieu de
+  7–19, mais rendu WebGL plus lent et plus gourmand en batterie sur l'entrée
+  de gamme. Repli si le budget APK ne tient pas malgré les deux remèdes.
+- **Extrait embarqué dans l'APK** : plus simple, mais chaque mise à jour de
+  la carte exigerait de redistribuer l'APK.
+- **OfflineManager de MapLibre** (packs téléchargés depuis un serveur de
+  tuiles) : demande un serveur de tuiles en ligne ; un fichier PMTiles unique
+  servi en statique est plus sobre.
+
+---
+
 ## 2026-11-02 — Permissions Android : on bloque celles qu'ajoutent les dépendances
 
 **Contexte.** Le premier APK de release, inspecté avec `aapt2`, déclare des
