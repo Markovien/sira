@@ -21,6 +21,9 @@ Documents de référence, à lire avant toute décision structurante :
 - [`REPRISE.md`](REPRISE.md) — **à lire en premier pour reprendre le travail** :
   où en est la session, comment remonter l'environnement après un redémarrage,
   et quelle est la prochaine étape.
+- [`BILAN.md`](BILAN.md) — état complet du projet au dernier point d'étape, et
+  [`PROMPT-REPRISE.md`](PROMPT-REPRISE.md) — premier message à donner à une
+  nouvelle session Claude Code.
 
 ## Règles non négociables
 
@@ -217,7 +220,7 @@ Ce tableau dit _quoi_ ; [`decisions.md`](decisions.md) dit _pourquoi_ et à quel
   d'Ivoire et géocode « Pharmacie Saint Jean Cocody » : le smoke test passe
   PostgreSQL et Photon. **Restent les deux contrôles OSRM**, faute de
   l'extrait d'Abidjan : `download.geofabrik.de` est toujours refusé par la
-  politique réseau de l'environnement d'exécution. Sur un poste sans cette
+  politique réseau de l'environnement d'exécution (re-testé le 24/11/2026). Sur un poste sans cette
   restriction, `bash infra/osrm/prepare.sh` puis `pnpm infra:up && pnpm
 infra:smoke` closent la Phase 0.
 - Versions : toutes confirmées par exécution réelle. Le tag

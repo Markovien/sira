@@ -6,17 +6,22 @@ remonter l'environnement pour le faire ?**
 
 - Le _quoi_ et le _comment_ permanents sont dans [`CLAUDE.md`](CLAUDE.md).
 - Le _pourquoi_ de chaque choix est dans [`decisions.md`](decisions.md).
+- L'**état complet** au 24/11/2026 est dans [`BILAN.md`](BILAN.md), et le
+  **prompt de reprise** pour une nouvelle session dans
+  [`PROMPT-REPRISE.md`](PROMPT-REPRISE.md).
+- La branche de travail est **`claude/phase-0-execution-iyvf4a`**, choisie
+  par le fondateur : y rester même si l'environnement en propose une autre.
 
 ---
 
 ## En un coup d'œil
 
-|                    |                                                                         |
-| ------------------ | ----------------------------------------------------------------------- |
-| **Branche**        | `claude/phase-0-execution-iyvf4a`                                       |
-| **Dépôt**          | `Markovien/sira` — pas de pull request ouverte, tout est sur la branche |
-| **Phase courante** | **3 en cours** — lots 1 à 4 et 6 livrés ; reste la carte (5)            |
-| **Bloqué sur**     | rien côté code — un point attend le fondateur (réseau Geofabrik)        |
+|                    |                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| **Branche**        | `claude/phase-0-execution-iyvf4a`                                                    |
+| **Dépôt**          | `Markovien/sira` — pas de pull request, 57 commits d'avance sur `main` au 24/11/2026 |
+| **Phase courante** | **3 en cours** — lots 1 à 4 et 6 livrés ; reste la carte (5)                         |
+| **Bloqué sur**     | rien côté code — Geofabrik refusé (re-testé le 24/11/2026)                           |
 
 | Phase              | État                                                                |
 | ------------------ | ------------------------------------------------------------------- |
@@ -41,16 +46,16 @@ tableau s'il paraît daté.
 À lire avant d'écrire quoi que ce soit : la moitié de ce qu'on croit devoir
 construire est déjà là.
 
-| Emplacement                | Contenu                                                                                                                                |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`                 | NestJS + Prisma. 16 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation.                                |
-| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web.   |
-| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                        |
-| `apps/mobile`              | Expo SDK 58 + expo-router. `src/core` (TS pur, testé en Node) : optimisation embarquée, liens « Y aller ». Thème contrasté, textes FR. |
-| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                    |
-| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM.                        |
-| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                             |
-| `.github/workflows/ci.yml` | 6 travaux : qualité, données, scripts, solveur VRP, API compilée, bundle mobile Android (< 8 Mo).                                      |
+| Emplacement                | Contenu                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`                 | NestJS + Prisma. 16 routes : auth, missions, arrêts, import CSV/XLSX, routage, géocodage, optimisation.                                                                         |
+| `packages/shared`          | Vocabulaire métier et **tous les schémas Zod** — auth, missions, arrêts, géocodage, optimisation. Partagés avec le mobile et le web.                                            |
+| `packages/tsp-core`        | Solveur TSP pur TypeScript, validé sur berlin52. Build double ESM/CJS en place.                                                                                                 |
+| `apps/mobile`              | Expo SDK 58 + expo-router. `src/core` (TS pur, testé en Node) : API, SQLite, synchro, optimisation, GPS, preuves. Écrans : connexion, missions, création, exécution. APK 47 Mo. |
+| `services/vrp-solver`      | FastAPI + OR-Tools. `POST /solve`. Dockerfile et travail CI inclus.                                                                                                             |
+| `infra`                    | docker-compose (PostGIS, OSRM, Photon, VRP), scripts de préparation, smoke test, vérification du pipeline OSRM.                                                                 |
+| `data`                     | 60 arrêts d'Abidjan, générateur déterministe, JSON Schema.                                                                                                                      |
+| `.github/workflows/ci.yml` | 6 travaux : qualité, données, scripts, solveur VRP, API compilée, bundle mobile Android (< 8 Mo).                                                                               |
 
 Trois conventions qui évitent de refaire le travail :
 
@@ -69,6 +74,9 @@ les services ne survivent pas ; les perdre sans le savoir fait échouer les
 tests de bout en bout pour de mauvaises raisons.
 
 ```bash
+# 0. Dependances et paquets partages (node_modules ne survit pas non plus)
+pnpm install --frozen-lockfile && pnpm build
+
 # 1. Démon Docker (absent au démarrage, le binaire est là)
 nohup dockerd > /tmp/dockerd.log 2>&1 & disown
 until docker info >/dev/null 2>&1; do sleep 1; done
@@ -272,7 +280,8 @@ Points d'attention :
 
 ## Ce qui attend le fondateur
 
-**1. L'autorisation réseau pour Geofabrik, qui clôt la Phase 0.**
+**1. L'autorisation réseau pour Geofabrik, qui clôt la Phase 0.** Dernier
+essai : 24/11/2026, toujours refusé.
 `download1.graphhopper.com` est **ouvert** depuis le 25/10/2026 : Photon tourne
 sur l'index réel et son contrôle du smoke test est vert.
 `download.geofabrik.de` reste refusé — le tunnel s'établit puis l'egress le
@@ -291,6 +300,18 @@ l'environnement dans la barre de titre, puis **Edit → Network access** — soi
 un niveau d'accès plus large, soit ce domaine sous « Allowed domains »
 en gardant cochée la case des gestionnaires de paquets. Documentation :
 <https://code.claude.com/docs/en/cloud-environments#network-access>
+
+**2. Un essai sur un vrai téléphone Android.** L'APK (47 Mo, clé de debug)
+n'a jamais été installé : appareil photo, GPS, Keystore et mode avion n'ont
+été vus qu'à travers des doublures web. Les 3 parcours Maestro
+(`apps/mobile/.maestro/`) attendent un poste avec émulateur ou un téléphone
+branché — l'environnement cloud n'a pas de `/dev/kvm`.
+
+**3. La clé de signature de production**, à créer sur le poste du fondateur,
+hors dépôt, avant toute distribution.
+
+**4. Plus tard : valider la source de carte du lot 5**, une fois la
+proposition consignée dans `decisions.md`.
 
 _Déjà tranché, rien à redemander :_
 
