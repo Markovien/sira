@@ -19,7 +19,7 @@ remonter l'environnement pour le faire ?**
 |                    |                                                                                      |
 | ------------------ | ------------------------------------------------------------------------------------ |
 | **Branche**        | `claude/phase-0-execution-iyvf4a`                                                    |
-| **Dépôt**          | `Markovien/sira` — pas de pull request, 57 commits d'avance sur `main` au 24/11/2026 |
+| **Dépôt**          | `Markovien/sira` — pas de pull request, 53 commits d'avance sur `main` au 24/11/2026 |
 | **Phase courante** | **3 en cours** — 6 lots sur 6 livrés ; reste l'essai sur appareil et Maestro         |
 | **Bloqué sur**     | un appareil (pas de `/dev/kvm`) ; Geofabrik refusé (re-testé le 24/11/2026)          |
 

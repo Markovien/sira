@@ -10,15 +10,15 @@ trouve chaque chose. Pour la marche à suivre au quotidien, lire ensuite
 
 ## Situation du dépôt
 
-|                           |                                                                          |
-| ------------------------- | ------------------------------------------------------------------------ |
-| **Dépôt**                 | `Markovien/sira`                                                         |
-| **Branche de travail**    | `claude/phase-0-execution-iyvf4a` — imposée par le fondateur, tout y est |
-| **Pull request**          | aucune ouverte                                                           |
-| **Avance sur `main`**     | 57 commits au 24/11/2026 (`git log --oneline origin/main..HEAD`)         |
-| **CI GitHub**             | 6 travaux, tous verts sur le dernier commit poussé                       |
-| **Journal des décisions** | 53 entrées, chacune écrite avant d'être appliquée                        |
-| **Tests**                 | 291, tous verts (détail plus bas)                                        |
+|                           |                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| **Dépôt**                 | `Markovien/sira`                                                                |
+| **Branche de travail**    | `claude/phase-0-execution-iyvf4a` — imposée par le fondateur, tout y est        |
+| **Pull request**          | aucune ouverte                                                                  |
+| **Avance sur `main`**     | 53 commits au 24/11/2026, lot 5 compris (`git log --oneline origin/main..HEAD`) |
+| **CI GitHub**             | 6 travaux, tous verts sur le dernier commit poussé                              |
+| **Journal des décisions** | 53 entrées, chacune écrite avant d'être appliquée                               |
+| **Tests**                 | 291, tous verts (détail plus bas)                                               |
 
 ---
 
